@@ -180,7 +180,7 @@ function sendThirdFollowUpForRow(email, firstName) {
   const rawOrig  = lastMsg.getRawContent();
   const inReplyTo= (rawOrig.match(/^Message-ID:\s*(<[^>]+>)/mi) || [])[1];
   if (!inReplyTo) {
-    Logger.log('❌ No Message-ID header found; aborting.');
+    Logger.log('❌ No Message-ID header found; aborting third follow-up.');
     return;
   }
 
@@ -213,7 +213,7 @@ function sendFourthFollowUpForRow(email, firstName) {
   const rawOrig  = lastMsg.getRawContent();
   const inReplyTo= (rawOrig.match(/^Message-ID:\s*(<[^>]+>)/mi) || [])[1];
   if (!inReplyTo) {
-    Logger.log('❌ No Message-ID header found; aborting.');
+    Logger.log('❌ No Message-ID header found; aborting fourth follow-up.');
     return;
   }
 
