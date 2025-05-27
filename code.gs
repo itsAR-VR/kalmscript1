@@ -234,7 +234,7 @@ function sendFourthFollowUpForRow(email, firstName) {
 function buildRawMessage_(to, subject, textBody, htmlBody, inReplyTo) {
   const nl       = '\r\n';
   const boundary = '----=_Boundary_' + Date.now();
-  let msg = 
+  let msg =
     `To: ${to}` + nl +
     `Subject: ${subject}` + nl +
     `In-Reply-To: ${inReplyTo}` + nl +
@@ -249,4 +249,75 @@ function buildRawMessage_(to, subject, textBody, htmlBody, inReplyTo) {
     htmlBody + nl + nl +
     `--${boundary}--`;
   return Utilities.base64EncodeWebSafe(msg);
+}
+
+/**
+ * Helper: checks if the last message in a thread came from the contact.
+ *
+ * @param {GmailThread} thread The Gmail thread to inspect.
+ * @param {string} email       The contact's email address.
+ * @return {boolean} True if the last message is from the contact.
+ */
+function isLastMessageFromContact_(thread, email) {
+  const last = thread.getMessages().pop();
+  if (!last) return false;
+  const from  = last.getFrom();
+  const match = from.match(/<([^>]+)>/);
+  const addr  = (match ? match[1] : from).toLowerCase();
+  return addr === email.toLowerCase();
+}
+
+/**
+ * Automatically send follow-ups when appropriate.
+ * Scans all outreach threads and sends the next follow-up if
+ * the contact has not replied yet.
+ */
+function autoSendFollowUps() {
+  const subject = OUTREACH_SUBJECT;
+  const threads = GmailApp.search(`in:anywhere subject:"${subject}"`);
+  Logger.log('autoSendFollowUps: found %d thread(s)', threads.length);
+
+  const myEmail = Session.getActiveUser().getEmail();
+
+  threads.forEach(thread => {
+    const messages = thread.getMessages();
+    if (!messages.length) return;
+
+    // Determine contact email from first message's To: header
+    let email = messages[0].getTo();
+    let m = email.match(/<([^>]+)>/);
+    if (m) email = m[1];
+
+    // Skip if contact responded
+    if (isLastMessageFromContact_(thread, email)) {
+      Logger.log('Thread %s: last message from %s, skipping.', thread.getId(), email);
+      return;
+    }
+
+    // Count how many messages we've sent in the thread
+    const sentCount = messages.filter(msg => msg.getFrom().indexOf(myEmail) !== -1).length;
+
+    // Extract first name if possible (from outreach message)
+    let firstName = '';
+    const firstBody = messages[0].getPlainBody();
+    const fnMatch = firstBody.match(/Hi\s+(\S+)/i);
+    if (fnMatch) firstName = fnMatch[1];
+
+    switch (sentCount) {
+      case 1:
+        sendFirstFollowUpForRow(email, firstName);
+        break;
+      case 2:
+        sendSecondFollowUpForRow(email, firstName);
+        break;
+      case 3:
+        sendThirdFollowUpForRow(email, firstName);
+        break;
+      case 4:
+        sendFourthFollowUpForRow(email, firstName);
+        break;
+      default:
+        Logger.log('Thread %s already has %d sent messages; no action.', thread.getId(), sentCount);
+    }
+  });
 }
