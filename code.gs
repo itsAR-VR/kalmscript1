@@ -3,6 +3,12 @@
  */
 const OUTREACH_SUBJECT = `Hey We'd love to send you some product! // kalm wellness`;
 
+// Number of days to wait before each follow-up email is sent
+const FIRST_FU_DELAY_DAYS  = 2;
+const SECOND_FU_DELAY_DAYS = 4;
+const THIRD_FU_DELAY_DAYS  = 7;
+const FOURTH_FU_DELAY_DAYS = 12;
+
 
 /**
  * Installable onEdit trigger: fires on ANY sheet when "Status" is edited.
@@ -234,7 +240,7 @@ function sendFourthFollowUpForRow(email, firstName) {
 function buildRawMessage_(to, subject, textBody, htmlBody, inReplyTo) {
   const nl       = '\r\n';
   const boundary = '----=_Boundary_' + Date.now();
-  let msg = 
+  let msg =
     `To: ${to}` + nl +
     `Subject: ${subject}` + nl +
     `In-Reply-To: ${inReplyTo}` + nl +
@@ -249,4 +255,76 @@ function buildRawMessage_(to, subject, textBody, htmlBody, inReplyTo) {
     htmlBody + nl + nl +
     `--${boundary}--`;
   return Utilities.base64EncodeWebSafe(msg);
+}
+
+/**
+ * Automatically send follow-up emails if contacts haven't replied.
+ * Intended to run daily via a time-based Apps Script trigger.
+ */
+function autoSendFollowUps() {
+  const sh   = SpreadsheetApp.getActiveSheet();
+  const hdrs = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+
+  const nameCol   = hdrs.indexOf('First/Last Name') + 1;
+  const emailCol  = hdrs.indexOf('Email') + 1;
+  const statusCol = hdrs.indexOf('Status') + 1;
+  if (nameCol < 1 || emailCol < 1 || statusCol < 1) {
+    throw new Error('Headers required: First/Last Name, Email, Status');
+  }
+
+  const numRows = sh.getLastRow() - 1;
+  if (numRows < 1) return;
+  const data = sh.getRange(2, 1, numRows, sh.getLastColumn()).getValues();
+
+  data.forEach((vals, idx) => {
+    const row    = idx + 2;
+    const email  = vals[emailCol - 1];
+    if (!email) return;
+    const full   = vals[nameCol - 1] || '';
+    const first  = full.split(/\s+/)[0];
+    let status   = vals[statusCol - 1] || '';
+    const tags   = status.split(',').map(t => t.trim()).filter(Boolean);
+
+    const query   = `in:anywhere to:${email} subject:"${OUTREACH_SUBJECT}"`;
+    const threads = GmailApp.search(query);
+    if (!threads.length) return;
+
+    const thread   = threads[0];
+    const lastMsg  = thread.getMessages().pop();
+    const fromAddr = lastMsg.getFrom();
+    if (fromAddr && fromAddr.toLowerCase().includes(email.toLowerCase())) return;
+
+    const daysSince = (Date.now() - lastMsg.getDate().getTime()) / 86400000;
+
+    if (!tags.includes('1st Follow Up Sent') && daysSince >= FIRST_FU_DELAY_DAYS) {
+      sendFirstFollowUpForRow(email, first);
+      tags.push('1st Follow Up Sent');
+    } else if (
+      tags.includes('1st Follow Up Sent') &&
+      !tags.includes('2nd Follow Up Sent') &&
+      daysSince >= SECOND_FU_DELAY_DAYS
+    ) {
+      sendSecondFollowUpForRow(email, first);
+      tags.push('2nd Follow Up Sent');
+    } else if (
+      tags.includes('2nd Follow Up Sent') &&
+      !tags.includes('3rd Follow Up Sent') &&
+      daysSince >= THIRD_FU_DELAY_DAYS
+    ) {
+      sendThirdFollowUpForRow(email, first);
+      tags.push('3rd Follow Up Sent');
+    } else if (
+      tags.includes('3rd Follow Up Sent') &&
+      !tags.includes('4th Follow Up Sent') &&
+      daysSince >= FOURTH_FU_DELAY_DAYS
+    ) {
+      sendFourthFollowUpForRow(email, first);
+      tags.push('4th Follow Up Sent');
+    }
+
+    const newStatus = tags.join(', ');
+    if (newStatus !== status) {
+      sh.getRange(row, statusCol).setValue(newStatus);
+    }
+  });
 }
