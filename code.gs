@@ -166,26 +166,32 @@ function sendSecondFollowUpForRow(email, firstName) {
 
 function sendThirdFollowUpForRow(email, firstName) {
   Logger.log('▶ Enter sendThirdFollowUpForRow; email=%s, firstName=%s', email, firstName);
+
   const subject = OUTREACH_SUBJECT;
   const query   = `in:anywhere to:${email} subject:"${subject}"`;
+  Logger.log('Search query: %s', query);
+
   const threads = GmailApp.search(query);
-  if (!threads.length) return;  // abort if no matching thread
+  Logger.log('Search returned %d thread(s)', threads.length);
+  if (!threads.length) return;
 
-  const thread    = threads[0];
-  const lastMsg   = thread.getMessages().pop();
-  const rawOrig   = lastMsg.getRawContent();
-  const inReplyTo = (rawOrig.match(/^Message-ID:\s*(<[^>]+>)/mi) || [])[1];
-  if (!inReplyTo) return;
+  const thread   = threads[0];
+  const lastMsg  = thread.getMessages().pop();
+  const rawOrig  = lastMsg.getRawContent();
+  const inReplyTo= (rawOrig.match(/^Message-ID:\s*(<[^>]+>)/mi) || [])[1];
+  if (!inReplyTo) {
+    Logger.log('❌ No Message-ID header found; aborting.');
+    return;
+  }
 
-  // Render bodies
   const tpl      = HtmlService.createTemplateFromFile('ThirdFollowUpTemplate');
   tpl.firstName  = firstName;
   const htmlBody = tpl.evaluate().getContent();
   const textBody = `Hi ${firstName},\n\nQuick nudge—your complimentary Kalm mouth‑tape pack is still reserved for you. Just reply with your address and I’ll ship it right away!\n\nWarmly,\nKam Ordonez`;
 
   const raw = buildRawMessage_(email, `Re: ${subject}`, textBody, htmlBody, inReplyTo);
-  Gmail.Users.Messages.send({ threadId: thread.getId(), raw }, 'me');
-  Logger.log('✅ 3rd FU sent via Advanced API to %s', email);
+  Gmail.Users.Messages.send({ threadId: thread.getId(), raw: raw }, 'me');
+  Logger.log('✅ 3rd FU sent via Advanced API to %s in thread %s', email, thread.getId());
 }
 
 /**
@@ -193,16 +199,23 @@ function sendThirdFollowUpForRow(email, firstName) {
  */
 function sendFourthFollowUpForRow(email, firstName) {
   Logger.log('▶ Enter sendFourthFollowUpForRow; email=%s, firstName=%s', email, firstName);
+
   const subject = OUTREACH_SUBJECT;
   const query   = `in:anywhere to:${email} subject:"${subject}"`;
+  Logger.log('Search query: %s', query);
+
   const threads = GmailApp.search(query);
+  Logger.log('Search returned %d thread(s)', threads.length);
   if (!threads.length) return;
 
-  const thread    = threads[0];
-  const lastMsg   = thread.getMessages().pop();
-  const rawOrig   = lastMsg.getRawContent();
-  const inReplyTo = (rawOrig.match(/^Message-ID:\s*(<[^>]+>)/mi) || [])[1];
-  if (!inReplyTo) return;
+  const thread   = threads[0];
+  const lastMsg  = thread.getMessages().pop();
+  const rawOrig  = lastMsg.getRawContent();
+  const inReplyTo= (rawOrig.match(/^Message-ID:\s*(<[^>]+>)/mi) || [])[1];
+  if (!inReplyTo) {
+    Logger.log('❌ No Message-ID header found; aborting.');
+    return;
+  }
 
   const tpl      = HtmlService.createTemplateFromFile('FourthFollowUpTemplate');
   tpl.firstName  = firstName;
@@ -210,8 +223,8 @@ function sendFourthFollowUpForRow(email, firstName) {
   const textBody = `Hi ${firstName},\n\nThis is my last check‑in for now. If calmer, clearer sleep isn’t on your radar yet, no worries—just reply “later”. Otherwise, send your address anytime and I’ll pop your free sample in the mail.\n\nFind your Kalm,\nKam Ordonez`;
 
   const raw = buildRawMessage_(email, `Re: ${subject}`, textBody, htmlBody, inReplyTo);
-  Gmail.Users.Messages.send({ threadId: thread.getId(), raw }, 'me');
-  Logger.log('✅ 4th FU sent via Advanced API to %s', email);
+  Gmail.Users.Messages.send({ threadId: thread.getId(), raw: raw }, 'me');
+  Logger.log('✅ 4th FU sent via Advanced API to %s in thread %s', email, thread.getId());
 }
 
 /**
