@@ -311,10 +311,9 @@ function autoSendFollowUps() {
     if (!threads.length) return;
 
     const thread   = threads[0];
-    const lastMsg  = thread.getMessages().pop();
-    const fromAddr = lastMsg.getFrom();
-    if (fromAddr && fromAddr.toLowerCase().includes(email.toLowerCase())) return;
+    if (isLastMessageFromContact_(thread, email)) return;
 
+    const lastMsg  = thread.getMessages().pop();
     const minutesSince = (Date.now() - lastMsg.getDate().getTime()) / 60000;
 
     if (!tags.includes('1st Follow Up Sent') && minutesSince >= FIRST_FU_DELAY_MINUTES) {
