@@ -186,7 +186,7 @@ function sendThirdFollowUpForRow(email, firstName) {
   const rawOrig  = lastMsg.getRawContent();
   const inReplyTo= (rawOrig.match(/^Message-ID:\s*(<[^>]+>)/mi) || [])[1];
   if (!inReplyTo) {
-    Logger.log('❌ No Message-ID header found; aborting.');
+    Logger.log('❌ No Message-ID header found; aborting third follow-up.');
     return;
   }
 
@@ -219,7 +219,7 @@ function sendFourthFollowUpForRow(email, firstName) {
   const rawOrig  = lastMsg.getRawContent();
   const inReplyTo= (rawOrig.match(/^Message-ID:\s*(<[^>]+>)/mi) || [])[1];
   if (!inReplyTo) {
-    Logger.log('❌ No Message-ID header found; aborting.');
+    Logger.log('❌ No Message-ID header found; aborting fourth follow-up.');
     return;
   }
 
@@ -255,6 +255,23 @@ function buildRawMessage_(to, subject, textBody, htmlBody, inReplyTo) {
     htmlBody + nl + nl +
     `--${boundary}--`;
   return Utilities.base64EncodeWebSafe(msg);
+}
+
+/**
+
+ * Helper: checks if the last message in a thread came from the contact.
+ *
+ * @param {GmailThread} thread The Gmail thread to inspect.
+ * @param {string} email       The contact's email address.
+ * @return {boolean} True if the last message is from the contact.
+ */
+function isLastMessageFromContact_(thread, email) {
+  const last = thread.getMessages().pop();
+  if (!last) return false;
+  const from  = last.getFrom();
+  const match = from.match(/<([^>]+)>/);
+  const addr  = (match ? match[1] : from).toLowerCase();
+  return addr === email.toLowerCase();
 }
 
 /**
