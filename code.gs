@@ -3,6 +3,10 @@
  */
 const OUTREACH_SUBJECT = `Hey We'd love to send you some product! // kalm wellness`;
 
+// Gmail alias used when sending messages. Must be configured as a valid
+// "send as" alias on the account running this script.
+const FROM_ALIAS = 'partnerships@clubkalm.com';
+
 // Number of minutes to wait before each follow-up email is sent.
 // These were previously day-based delays.  For production, keep the
 // minute values equivalent to the desired day delays (e.g. 2 days =
@@ -98,7 +102,8 @@ function sendInitialForRow(email, firstName) {
     to:       email,
     subject:  subject,
     body:     textBody,
-    htmlBody: htmlBody
+    htmlBody: htmlBody,
+    from:     FROM_ALIAS
   });
   Logger.log('Outreach sent to %s with subject "%s"', email, subject);
 }
@@ -239,12 +244,13 @@ function sendFourthFollowUpForRow(email, firstName) {
 
 /**
  * Helper: builds a base64-URL-encoded RFC-2822 multipart/alternative reply
- * with To:, Subject:, In-Reply-To, and References headers.
+ * with From:, To:, Subject:, In-Reply-To, and References headers.
  */
 function buildRawMessage_(to, subject, textBody, htmlBody, inReplyTo) {
   const nl       = '\r\n';
   const boundary = '----=_Boundary_' + Date.now();
   let msg =
+    `From: ${FROM_ALIAS}` + nl +
     `To: ${to}` + nl +
     `Subject: ${subject}` + nl +
     `In-Reply-To: ${inReplyTo}` + nl +
