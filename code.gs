@@ -3,11 +3,15 @@
  */
 const OUTREACH_SUBJECT = `Hey We'd love to send you some product! // kalm wellness`;
 
-// Number of days to wait before each follow-up email is sent
-const FIRST_FU_DELAY_DAYS  = 2;
-const SECOND_FU_DELAY_DAYS = 4;
-const THIRD_FU_DELAY_DAYS  = 7;
-const FOURTH_FU_DELAY_DAYS = 12;
+// Number of minutes to wait before each follow-up email is sent.
+// These were previously day-based delays.  For production, keep the
+// minute values equivalent to the desired day delays (e.g. 2 days =
+// 2 * 24 * 60 = 2880).  During testing you can shorten these values
+// to just a few minutes for faster feedback.
+const FIRST_FU_DELAY_MINUTES  = 2  * 24 * 60;  // 2 days
+const SECOND_FU_DELAY_MINUTES = 4  * 24 * 60;  // 4 days
+const THIRD_FU_DELAY_MINUTES  = 7  * 24 * 60;  // 7 days
+const FOURTH_FU_DELAY_MINUTES = 12 * 24 * 60;  // 12 days
 
 
 /**
@@ -311,29 +315,29 @@ function autoSendFollowUps() {
     const fromAddr = lastMsg.getFrom();
     if (fromAddr && fromAddr.toLowerCase().includes(email.toLowerCase())) return;
 
-    const daysSince = (Date.now() - lastMsg.getDate().getTime()) / 86400000;
+    const minutesSince = (Date.now() - lastMsg.getDate().getTime()) / 60000;
 
-    if (!tags.includes('1st Follow Up Sent') && daysSince >= FIRST_FU_DELAY_DAYS) {
+    if (!tags.includes('1st Follow Up Sent') && minutesSince >= FIRST_FU_DELAY_MINUTES) {
       sendFirstFollowUpForRow(email, first);
       tags.push('1st Follow Up Sent');
     } else if (
       tags.includes('1st Follow Up Sent') &&
       !tags.includes('2nd Follow Up Sent') &&
-      daysSince >= SECOND_FU_DELAY_DAYS
+      minutesSince >= SECOND_FU_DELAY_MINUTES
     ) {
       sendSecondFollowUpForRow(email, first);
       tags.push('2nd Follow Up Sent');
     } else if (
       tags.includes('2nd Follow Up Sent') &&
       !tags.includes('3rd Follow Up Sent') &&
-      daysSince >= THIRD_FU_DELAY_DAYS
+      minutesSince >= THIRD_FU_DELAY_MINUTES
     ) {
       sendThirdFollowUpForRow(email, first);
       tags.push('3rd Follow Up Sent');
     } else if (
       tags.includes('3rd Follow Up Sent') &&
       !tags.includes('4th Follow Up Sent') &&
-      daysSince >= FOURTH_FU_DELAY_DAYS
+      minutesSince >= FOURTH_FU_DELAY_MINUTES
     ) {
       sendFourthFollowUpForRow(email, first);
       tags.push('4th Follow Up Sent');
