@@ -14,6 +14,9 @@ The script sends an initial outreach email and up to four follow‑up messages. 
 4. In the Apps Script editor choose **Extensions → Advanced Google services** and enable **Gmail API**.
 5. Click the link to the Google Cloud Platform console and also enable the Gmail API for the project there.
 6. Save and authorize the script when prompted.
+7. Configure the `FROM_ALIAS` constant in `code.gs` to the Gmail alias you want
+   to send from. That alias must be added as a valid **Send mail as** address in
+   the Gmail settings of the account running the script.
 
 ## Basic Usage
 
