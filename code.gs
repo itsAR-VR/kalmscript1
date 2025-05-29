@@ -292,11 +292,12 @@ function autoSendFollowUps() {
   const sh   = SpreadsheetApp.getActiveSheet();
   const hdrs = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
 
-  const nameCol   = hdrs.indexOf('First/Last Name') + 1;
-  const emailCol  = hdrs.indexOf('Email') + 1;
-  const statusCol = hdrs.indexOf('Status') + 1;
-  if (nameCol < 1 || emailCol < 1 || statusCol < 1) {
-    throw new Error('Headers required: First/Last Name, Email, Status');
+  const nameCol      = hdrs.indexOf('First/Last Name') + 1;
+  const emailCol     = hdrs.indexOf('Email') + 1;
+  const statusCol    = hdrs.indexOf('Status') + 1;
+  const replyCol     = hdrs.indexOf('Reply Status') + 1;
+  if (nameCol < 1 || emailCol < 1 || statusCol < 1 || replyCol < 1) {
+    throw new Error('Headers required: First/Last Name, Email, Status, Reply Status');
   }
 
   const numRows = sh.getLastRow() - 1;
@@ -317,7 +318,13 @@ function autoSendFollowUps() {
     if (!threads.length) return;
 
     const thread   = threads[0];
-    if (isLastMessageFromContact_(thread, email)) return;
+    const replyCell = sh.getRange(row, replyCol);
+    if (isLastMessageFromContact_(thread, email)) {
+      replyCell.setValue('New Response').setBackground('lightgreen');
+      return;
+    } else {
+      replyCell.clearContent().setBackground(null);
+    }
 
     const lastMsg  = thread.getMessages().pop();
     const minutesSince = (Date.now() - lastMsg.getDate().getTime()) / 60000;
