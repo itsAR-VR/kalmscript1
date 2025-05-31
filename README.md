@@ -18,6 +18,10 @@ The script sends an initial outreach email and up to four follow‑up messages. 
    to send from. That alias must be added as a valid **Send mail as** address in
    the Gmail settings of the account running the script.
 
+### Configuration
+
+The `FROM_ALIAS` constant controls which Gmail alias the script uses to send messages. Set it to one of your Gmail "Send mail as" addresses and ensure that alias is authorized for the account.
+
 ## Basic Usage
 
 1. In your spreadsheet create columns titled **First/Last Name**, **Email**, **Status**, and **Reply Status**.
