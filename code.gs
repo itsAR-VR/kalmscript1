@@ -3,6 +3,9 @@
  */
 const OUTREACH_SUBJECT = `Hey We'd love to send you some product! // kalm wellness`;
 
+// Name of the sheet containing outreach contacts
+const TARGET_SHEET_NAME = 'Contacts';
+
 // Gmail alias used when sending messages. Must be configured as a valid
 // "send as" alias on the account running this script.
 const FROM_ALIAS = 'partnerships@clubkalm.com';
@@ -24,7 +27,10 @@ const FOURTH_FU_DELAY_MINUTES = 12 * 24 * 60;  // 12 days
  */
 function onEditTrigger(e) {
   if (!e || !e.range) return;
-  const sh   = e.range.getSheet();
+  const ss   = SpreadsheetApp.getActiveSpreadsheet();
+  const sh   = ss.getSheetByName(TARGET_SHEET_NAME);
+  if (!sh) return;
+  if (e.range.getSheet().getName() !== TARGET_SHEET_NAME) return;
   const hdrs = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
 
   // 1) Find Status column
@@ -98,14 +104,9 @@ function sendInitialForRow(email, firstName) {
   const htmlBody = tpl.evaluate().getContent();
   const textBody = `Hi ${firstName},\n\nThanks for connecting—here’s the info we discussed.\n\nBest,\nKam Ordonez`;
 
-  MailApp.sendEmail({
-    to:       email,
-    subject:  subject,
-    body:     textBody,
-    htmlBody: htmlBody,
-    from:     FROM_ALIAS
-  });
-  Logger.log('Outreach sent to %s with subject "%s"', email, subject);
+  const raw = buildRawMessage_(email, subject, textBody, htmlBody);
+  Gmail.Users.Messages.send({ raw: raw }, 'me');
+  Logger.log('Outreach sent via API to %s with subject "%s"', email, subject);
 }
 
 
@@ -249,14 +250,20 @@ function sendFourthFollowUpForRow(email, firstName) {
 function buildRawMessage_(to, subject, textBody, htmlBody, inReplyTo) {
   const nl       = '\r\n';
   const boundary = '----=_Boundary_' + Date.now();
-  let msg =
+  let headers =
     `From: ${FROM_ALIAS}` + nl +
     `To: ${to}` + nl +
-    `Subject: ${subject}` + nl +
-    `In-Reply-To: ${inReplyTo}` + nl +
-    `References: ${inReplyTo}` + nl +
+    `Subject: ${subject}` + nl;
+  if (inReplyTo) {
+    headers +=
+      `In-Reply-To: ${inReplyTo}` + nl +
+      `References: ${inReplyTo}` + nl;
+  }
+  headers +=
     `MIME-Version: 1.0` + nl +
-    `Content-Type: multipart/alternative; boundary="${boundary}"` + nl + nl +
+    `Content-Type: multipart/alternative; boundary="${boundary}"` + nl + nl;
+  const msg =
+    headers +
     `--${boundary}` + nl +
     `Content-Type: text/plain; charset="UTF-8"` + nl + nl +
     textBody + nl + nl +
@@ -289,7 +296,9 @@ function isLastMessageFromContact_(thread, email) {
  * Intended to run daily via a time-based Apps Script trigger.
  */
 function autoSendFollowUps() {
-  const sh   = SpreadsheetApp.getActiveSheet();
+  const ss   = SpreadsheetApp.getActiveSpreadsheet();
+  const sh   = ss.getSheetByName(TARGET_SHEET_NAME);
+  if (!sh) return;
   const hdrs = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
 
   const nameCol      = hdrs.indexOf('First/Last Name') + 1;
