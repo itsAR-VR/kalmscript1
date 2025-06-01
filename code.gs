@@ -98,14 +98,9 @@ function sendInitialForRow(email, firstName) {
   const htmlBody = tpl.evaluate().getContent();
   const textBody = `Hi ${firstName},\n\nThanks for connecting—here’s the info we discussed.\n\nBest,\nKam Ordonez`;
 
-  MailApp.sendEmail({
-    to:       email,
-    subject:  subject,
-    body:     textBody,
-    htmlBody: htmlBody,
-    from:     FROM_ALIAS
-  });
-  Logger.log('Outreach sent to %s with subject "%s"', email, subject);
+  const raw = buildRawMessage_(email, subject, textBody, htmlBody);
+  Gmail.Users.Messages.send({ raw: raw }, 'me');
+  Logger.log('Outreach sent via Advanced API to %s with subject "%s"', email, subject);
 }
 
 
@@ -249,12 +244,18 @@ function sendFourthFollowUpForRow(email, firstName) {
 function buildRawMessage_(to, subject, textBody, htmlBody, inReplyTo) {
   const nl       = '\r\n';
   const boundary = '----=_Boundary_' + Date.now();
-  let msg =
+  let headers =
     `From: ${FROM_ALIAS}` + nl +
     `To: ${to}` + nl +
-    `Subject: ${subject}` + nl +
-    `In-Reply-To: ${inReplyTo}` + nl +
-    `References: ${inReplyTo}` + nl +
+    `Subject: ${subject}` + nl;
+  if (inReplyTo) {
+    headers +=
+      `In-Reply-To: ${inReplyTo}` + nl +
+      `References: ${inReplyTo}` + nl;
+  }
+
+  const msg =
+    headers +
     `MIME-Version: 1.0` + nl +
     `Content-Type: multipart/alternative; boundary="${boundary}"` + nl + nl +
     `--${boundary}` + nl +
