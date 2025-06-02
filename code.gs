@@ -6,9 +6,10 @@ const OUTREACH_SUBJECT = `Hey We'd love to send you some product! // kalm wellne
 // Name of the sheet containing outreach contacts
 const TARGET_SHEET_NAME = 'Contacts';
 
-// Gmail alias used when sending messages. Must be configured as a valid
-// "send as" alias on the account running this script.
-const FROM_ALIAS = 'partnerships@clubkalm.com';
+// Email address used when sending messages. Set this to the Gmail
+// account that owns the script. Using one address avoids issues with
+// aliases and makes reply detection reliable.
+const FROM_ADDRESS = 'creators@clubkalm.com';
 
 // Background color used when marking a new reply in the sheet.
 const NEW_RESPONSE_COLOR = 'red';
@@ -311,7 +312,7 @@ function buildRawMessage_(to, subject, textBody, htmlBody, inReplyTo) {
   const boundary = '----=_Boundary_' + Date.now();
 
   let headers =
-    `From: ${FROM_ALIAS}` + nl +
+    `From: ${FROM_ADDRESS}` + nl +
     `To: ${to}` + nl +
     `Subject: ${subject}` + nl;
 
@@ -339,20 +340,27 @@ function buildRawMessage_(to, subject, textBody, htmlBody, inReplyTo) {
 }
 
 /**
-
- * Helper: checks if the last message in a thread came from the contact.
+ * Helper: checks if the contact has replied in the thread since our most
+ * recent message. Scans backward until a message not from us is found.
  *
  * @param {GmailThread} thread The Gmail thread to inspect.
  * @param {string} email       The contact's email address.
- * @return {boolean} True if the last message is from the contact.
+ * @return {boolean} True if the most recent non-self message is from the contact.
  */
-function isLastMessageFromContact_(thread, email) {
-  const last = thread.getMessages().pop();
-  if (!last) return false;
-  const from  = last.getFrom();
-  const match = from.match(/<([^>]+)>/);
-  const addr  = (match ? match[1] : from).toLowerCase();
-  return addr === email.toLowerCase();
+function hasContactReplied_(thread, email) {
+  const myAddr = FROM_ADDRESS.toLowerCase();
+  const target = email.toLowerCase();
+  const messages = thread.getMessages().reverse();
+  for (let msg of messages) {
+    const from  = msg.getFrom();
+    const match = from.match(/<([^>]+)>/);
+    const addr  = (match ? match[1] : from).toLowerCase();
+    if (addr === myAddr) {
+      continue; // skip our own messages
+    }
+    return addr === target;
+  }
+  return false;
 }
 
 /**
@@ -393,7 +401,7 @@ function autoSendFollowUps() {
 
     const thread   = threads[0];
     const replyCell = sh.getRange(row, replyCol);
-    if (isLastMessageFromContact_(thread, email)) {
+    if (hasContactReplied_(thread, email)) {
       replyCell.setValue('New Response').setBackground(NEW_RESPONSE_COLOR);
       return;
     } else {
