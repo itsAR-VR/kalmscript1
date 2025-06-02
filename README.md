@@ -11,14 +11,14 @@ The script sends an initial outreach email and up to four follow‑up messages. 
 1. Create or open an Apps Script project attached to your spreadsheet.
 2. Replace the default `Code.gs` with `code.gs` from this repository and create HTML templates from each `*.html` file.
 3. In the Apps Script editor open **Extensions → Advanced Google services** and enable **Gmail API**, then follow the link to the Google Cloud console to enable it there as well.
-4. Set the `FROM_ALIAS` constant in `code.gs` to your desired Gmail alias.
+4. Set the `FROM_ADDRESS` constant in `code.gs` to the Gmail address that will send your outreach messages.
 5. Install an **On edit** trigger for `onEditTrigger` and a time‑driven trigger for `autoSendFollowUps`.
 6. Add a drawing or button in the sheet and assign the `startOutreachForSelectedRow` function to send outreach for the active row.
 7. Save and authorize the script when prompted.
 
 ### Configuration
 
-The `FROM_ALIAS` constant controls which Gmail alias the script uses to send messages. Set it to one of your Gmail "Send mail as" addresses and ensure that alias is authorized for the account.
+The `FROM_ADDRESS` constant controls which Gmail address the script uses to send messages. Set it to the single account that will manage your outreach. The script checks incoming replies on this same address to stop follow‑ups automatically.
 
 `NEW_RESPONSE_COLOR` sets the background color applied to the **Reply Status** cell when a contact replies. The default is `red` but you can change it to any valid Sheets color name or hex value.
 
