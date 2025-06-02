@@ -34,8 +34,6 @@ function onEditTrigger(e) {
   if (!e || !e.range) return;
   const ss   = SpreadsheetApp.getActiveSpreadsheet();
   const sh   = ss.getSheetByName(TARGET_SHEET_NAME);
-  if (!sh) return;
-  if (e.range.getSheet().getName() !== TARGET_SHEET_NAME) return;
   if (!sh || e.range.getSheet().getName() !== TARGET_SHEET_NAME) return;
   const hdrs = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
 
