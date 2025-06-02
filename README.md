@@ -30,6 +30,7 @@ The `FROM_ALIAS` constant controls which Gmail alias the script uses to send mes
 4. Add a row for each contact and update the **Status** cell with tags such as `Outreach`, `1st Follow Up`, etc. Editing the status will send the matching email template.
 5. Customize the template text and delay constants in `code.gs` as needed.
 6. When a contact replies, `autoSendFollowUps` writes `New Response` to the **Reply Status** column and highlights the cell using `NEW_RESPONSE_COLOR` (red by default). If your message is the most recent, the cell is cleared and its background reset.
+7. The follow-up routine searches Gmail using `in:anywhere (to:EMAIL OR from:EMAIL) subject:"SUBJECT"` so threads are matched whether messages were sent to the contact or received from them.
 
 With the Gmail service enabled and triggers installed, the script manages your outreach and follow‑ups directly from Gmail while updating status information in your spreadsheet.
 
