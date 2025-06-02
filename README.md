@@ -22,6 +22,8 @@ The script sends an initial outreach email and up to four follow‑up messages. 
 
 The `FROM_ALIAS` constant controls which Gmail alias the script uses to send messages. Set it to one of your Gmail "Send mail as" addresses and ensure that alias is authorized for the account.
 
+`NEW_RESPONSE_COLOR` sets the background color applied to the **Reply Status** cell when a contact replies. The default is `red` but you can change it to any valid Sheets color name or hex value.
+
 ## Basic Usage
 
 1. In your spreadsheet create columns titled **First/Last Name**, **Email**, **Status**, and **Reply Status**.
@@ -29,6 +31,6 @@ The `FROM_ALIAS` constant controls which Gmail alias the script uses to send mes
 3. Install a daily time‑driven trigger for `autoSendFollowUps` so unanswered threads continue to receive follow‑ups automatically.
 4. Add a row for each contact and update the **Status** cell with tags such as `Outreach`, `1st Follow Up`, etc. Editing the status will send the matching email template.
 5. Customize the template text and delay constants in `code.gs` as needed.
-6. When a contact replies, `autoSendFollowUps` writes `New Response` to the **Reply Status** column and highlights the cell in light green. If your message is the most recent, the cell is cleared and its background reset.
+6. When a contact replies, `autoSendFollowUps` writes `New Response` to the **Reply Status** column and highlights the cell using `NEW_RESPONSE_COLOR` (red by default). If your message is the most recent, the cell is cleared and its background reset.
 
 With the Gmail service enabled and triggers installed, the script manages your outreach and follow‑ups directly from Gmail while updating status information in your spreadsheet.

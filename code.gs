@@ -7,6 +7,9 @@ const OUTREACH_SUBJECT = `Hey We'd love to send you some product! // kalm wellne
 // "send as" alias on the account running this script.
 const FROM_ALIAS = 'partnerships@clubkalm.com';
 
+// Background color used when marking a new reply in the sheet.
+const NEW_RESPONSE_COLOR = 'red';
+
 // Number of minutes to wait before each follow-up email is sent.
 // These were previously day-based delays.  For production, keep the
 // minute values equivalent to the desired day delays (e.g. 2 days =
@@ -320,7 +323,7 @@ function autoSendFollowUps() {
     const thread   = threads[0];
     const replyCell = sh.getRange(row, replyCol);
     if (isLastMessageFromContact_(thread, email)) {
-      replyCell.setValue('New Response').setBackground('lightgreen');
+      replyCell.setValue('New Response').setBackground(NEW_RESPONSE_COLOR);
       return;
     } else {
       replyCell.clearContent().setBackground(null);
