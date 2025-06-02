@@ -17,6 +17,9 @@ const NEW_RESPONSE_COLOR = 'red';
 // Background color used when a contact is moved to DM.
 const MOVED_TO_DM_COLOR = '#d9d9d9';
 
+// Prefix used to build links back to Gmail threads in the Reply Status column.
+const GMAIL_THREAD_LINK_PREFIX = 'https://mail.google.com/mail/u/0/#inbox/';
+
 // Number of minutes to wait before each follow-up email is sent.
 // These were previously day-based delays.  For production, keep the
 // minute values equivalent to the desired day delays (e.g. 2 days =
@@ -366,6 +369,22 @@ function hasContactReplied_(thread, email) {
 }
 
 /**
+ * Helper to write a status value linked to the Gmail thread.
+ *
+ * @param {Range} cell      The Reply Status cell to update.
+ * @param {string} text     Display text such as "New Response".
+ * @param {string} threadId Gmail thread ID for the hyperlink.
+ * @param {string} color    Background color to apply.
+ */
+function setReplyStatusWithLink_(cell, text, threadId, color) {
+  const rich = SpreadsheetApp.newRichTextValue()
+    .setText(text)
+    .setLinkUrl(GMAIL_THREAD_LINK_PREFIX + threadId)
+    .build();
+  cell.setRichTextValue(rich).setBackground(color);
+}
+
+/**
  * Automatically send follow-up emails if contacts haven't replied.
  * Intended to run daily via a time-based Apps Script trigger.
  */
@@ -406,7 +425,12 @@ function autoSendFollowUps() {
     const thread   = threads[0];
     const replyCell = sh.getRange(row, replyCol);
     if (hasContactReplied_(thread, email)) {
-      replyCell.setValue('New Response').setBackground(NEW_RESPONSE_COLOR);
+      setReplyStatusWithLink_(
+        replyCell,
+        'New Response',
+        thread.getId(),
+        NEW_RESPONSE_COLOR,
+      );
       return;
     } else {
       replyCell.clearContent().setBackground(null);
@@ -444,7 +468,12 @@ function autoSendFollowUps() {
       !tags.includes('Moved to DM') &&
       minutesSince >= FOURTH_FU_DELAY_MINUTES
     ) {
-      replyCell.setValue('Moved to DM').setBackground(MOVED_TO_DM_COLOR);
+      setReplyStatusWithLink_(
+        replyCell,
+        'Moved to DM',
+        thread.getId(),
+        MOVED_TO_DM_COLOR,
+      );
       tags.push('Moved to DM');
     }
 
