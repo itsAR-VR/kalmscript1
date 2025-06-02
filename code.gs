@@ -13,6 +13,9 @@ const FROM_ALIAS = 'partnerships@clubkalm.com';
 // Background color used when marking a new reply in the sheet.
 const NEW_RESPONSE_COLOR = 'red';
 
+// Background color used when a contact is moved to DM.
+const MOVED_TO_DM_COLOR = '#d9d9d9';
+
 // Number of minutes to wait before each follow-up email is sent.
 // These were previously day-based delays.  For production, keep the
 // minute values equivalent to the desired day delays (e.g. 2 days =
@@ -332,6 +335,7 @@ function autoSendFollowUps() {
     const first  = full.split(/\s+/)[0];
     let status   = vals[statusCol - 1] || '';
     const tags   = status.split(',').map(t => t.trim()).filter(Boolean);
+    if (tags.includes('Moved to DM')) return;
 
     const query   = `in:anywhere to:${email} subject:"${OUTREACH_SUBJECT}"`;
     const threads = GmailApp.search(query);
@@ -373,6 +377,13 @@ function autoSendFollowUps() {
     ) {
       sendFourthFollowUpForRow(email, first);
       tags.push('4th Follow Up Sent');
+    } else if (
+      tags.includes('4th Follow Up Sent') &&
+      !tags.includes('Moved to DM') &&
+      minutesSince >= FOURTH_FU_DELAY_MINUTES
+    ) {
+      replyCell.setValue('Moved to DM').setBackground(MOVED_TO_DM_COLOR);
+      tags.push('Moved to DM');
     }
 
     const newStatus = tags.join(', ');
