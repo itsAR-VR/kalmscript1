@@ -115,6 +115,9 @@ function sendInitialForRow(email, firstName) {
 
   const raw = buildRawMessage_(email, subject, textBody, htmlBody);
   Gmail.Users.Messages.send({ raw: raw }, 'me');
+
+  Logger.log('Outreach sent via Advanced API to %s with subject "%s"', email, subject);
+
   Logger.log('Outreach sent via API to %s with subject "%s"', email, subject);
 }
 
@@ -268,6 +271,10 @@ function buildRawMessage_(to, subject, textBody, htmlBody, inReplyTo) {
       `In-Reply-To: ${inReplyTo}` + nl +
       `References: ${inReplyTo}` + nl;
   }
+
+  const msg =
+    headers +
+
   headers +=
     `MIME-Version: 1.0` + nl +
     `Content-Type: multipart/alternative; boundary="${boundary}"` + nl + nl;
