@@ -340,7 +340,7 @@ function buildRawMessage_(to, subject, textBody, htmlBody, inReplyTo) {
 
 /**
 
- * Helper: checks if the last message in a thread came from the contact.
+ * Helper: checks if the most recent message in a thread came from the contact.
  *
  * @param {GmailThread} thread The Gmail thread to inspect.
  * @param {string} email       The contact's email address.
@@ -387,7 +387,9 @@ function autoSendFollowUps() {
     const tags   = status.split(',').map(t => t.trim()).filter(Boolean);
     if (tags.includes('Moved to DM')) return;
 
-    const query   = `in:anywhere to:${email} subject:"${OUTREACH_SUBJECT}"`;
+    // Search threads that include messages sent to or received from the contact
+    const query   =
+      `in:anywhere (to:${email} OR from:${email}) subject:"${OUTREACH_SUBJECT}"`;
     const threads = GmailApp.search(query);
     if (!threads.length) return;
 
