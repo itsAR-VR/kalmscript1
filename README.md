@@ -6,17 +6,15 @@ This repository contains a Google Apps Script project that automates Gmail outre
 
 The script sends an initial outreach email and up to four follow‑up messages. Contacts are listed in a spreadsheet and tagged with the next action. When you update the **Status** column in the sheet, the script sends the appropriate email and schedules further follow‑ups.
 
-## Deployment
+## Step-by-Step Setup
 
-1. Create a new Apps Script project or open an existing one attached to your spreadsheet.
-2. Replace the default `Code.gs` with the contents of `code.gs` from this repository.
-3. For each HTML file (`OutreachTemplate.html`, `FirstFollowUpTemplate.html`, etc.), add a new HTML template and paste in the corresponding file contents.
-4. In the Apps Script editor choose **Extensions → Advanced Google services** and enable **Gmail API**.
-5. Click the link to the Google Cloud Platform console and also enable the Gmail API for the project there.
-6. Save and authorize the script when prompted.
-7. Configure the `FROM_ALIAS` constant in `code.gs` to the Gmail alias you want
-   to send from. That alias must be added as a valid **Send mail as** address in
-   the Gmail settings of the account running the script.
+1. Create or open an Apps Script project attached to your spreadsheet.
+2. Replace the default `Code.gs` with `code.gs` from this repository and create HTML templates from each `*.html` file.
+3. In the Apps Script editor open **Extensions → Advanced Google services** and enable **Gmail API**, then follow the link to the Google Cloud console to enable it there as well.
+4. Set the `FROM_ALIAS` constant in `code.gs` to your desired Gmail alias.
+5. Install an **On edit** trigger for `onEditTrigger` and a time‑driven trigger for `autoSendFollowUps`.
+6. Add a drawing or button in the sheet and assign the `startOutreachForSelectedRow` function to send outreach for the active row.
+7. Save and authorize the script when prompted.
 
 ### Configuration
 
