@@ -34,3 +34,15 @@ The `FROM_ALIAS` constant controls which Gmail alias the script uses to send mes
 6. When a contact replies, `autoSendFollowUps` writes `New Response` to the **Reply Status** column and highlights the cell using `NEW_RESPONSE_COLOR` (red by default). If your message is the most recent, the cell is cleared and its background reset.
 
 With the Gmail service enabled and triggers installed, the script manages your outreach and follow‑ups directly from Gmail while updating status information in your spreadsheet.
+
+### Optional: Button to Start Outreach
+
+You can place a button in your sheet that runs `startOutreachForSelectedRow` on
+the currently highlighted row:
+
+1. Insert a drawing or shape in the sheet to use as the button.
+2. Click the shape's menu (three dots) and choose **Assign script**.
+3. Enter `startOutreachForSelectedRow` and save.
+
+Now clicking the button will send the initial outreach email for the active row
+and tag its **Status** cell with `Outreach`.

@@ -120,6 +120,56 @@ function sendInitialForRow(email, firstName) {
   Logger.log('Outreach sent via API to %s with subject "%s"', email, subject);
 }
 
+/**
+ * Send an Outreach email for the row the user currently has selected.
+ * Verifies the selection is on the target sheet and extracts the name
+ * and email columns before delegating to {@link sendInitialForRow}.
+ * Optionally tags the Status column with "Outreach" so the sheet
+ * reflects that the initial message was sent.
+ */
+function startOutreachForSelectedRow() {
+  const sh = SpreadsheetApp.getActiveSheet();
+  if (!sh || sh.getName() !== TARGET_SHEET_NAME) {
+    SpreadsheetApp.getUi()
+      .alert(`Please run this from the "${TARGET_SHEET_NAME}" sheet.`);
+    return;
+  }
+
+  const row = sh.getActiveCell().getRow();
+  const hdrs = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+  const nameCol   = hdrs.indexOf('First/Last Name') + 1;
+  const emailCol  = hdrs.indexOf('Email') + 1;
+  const statusCol = hdrs.indexOf('Status') + 1;
+  if (nameCol < 1 || emailCol < 1) {
+    SpreadsheetApp.getUi().alert('Headers required: First/Last Name and Email');
+    return;
+  }
+
+  const vals   = sh.getRange(row, 1, 1, sh.getLastColumn()).getValues()[0];
+  const full   = vals[nameCol - 1] || '';
+  const first  = full.split(/\s+/)[0];
+  const email  = vals[emailCol - 1];
+  if (!email) {
+    SpreadsheetApp.getUi().alert('No email found for the selected row.');
+    return;
+  }
+
+  sendInitialForRow(email, first);
+
+  if (statusCol > 0) {
+    const cell  = sh.getRange(row, statusCol);
+    const tags  = (cell.getValue() || '')
+      .toString()
+      .split(',')
+      .map(t => t.trim())
+      .filter(Boolean);
+    if (!tags.includes('Outreach')) {
+      tags.push('Outreach');
+      cell.setValue(tags.join(', '));
+    }
+  }
+}
+
 
 /**
  * 2) First Follow-Up: advanced threaded reply that sets To: explicitly.
