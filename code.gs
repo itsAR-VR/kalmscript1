@@ -261,22 +261,23 @@ function sendFourthFollowUpForRow(email, firstName) {
 function buildRawMessage_(to, subject, textBody, htmlBody, inReplyTo) {
   const nl       = '\r\n';
   const boundary = '----=_Boundary_' + Date.now();
+
   let headers =
     `From: ${FROM_ALIAS}` + nl +
     `To: ${to}` + nl +
     `Subject: ${subject}` + nl;
+
   if (inReplyTo) {
     headers +=
       `In-Reply-To: ${inReplyTo}` + nl +
       `References: ${inReplyTo}` + nl;
   }
-  const msg =
-    headers +
+
   headers +=
     `MIME-Version: 1.0` + nl +
     `Content-Type: multipart/alternative; boundary="${boundary}"` + nl + nl;
-  const msg =
-    headers +
+
+  const body =
     `--${boundary}` + nl +
     `Content-Type: text/plain; charset="UTF-8"` + nl + nl +
     textBody + nl + nl +
@@ -284,6 +285,8 @@ function buildRawMessage_(to, subject, textBody, htmlBody, inReplyTo) {
     `Content-Type: text/html; charset="UTF-8"` + nl + nl +
     htmlBody + nl + nl +
     `--${boundary}--`;
+
+  const msg = headers + body;
   return Utilities.base64EncodeWebSafe(msg);
 }
 
