@@ -23,10 +23,6 @@ const SECOND_FU_DELAY_MINUTES = 4  * 24 * 60;  // 4 days
 const THIRD_FU_DELAY_MINUTES  = 7  * 24 * 60;  // 7 days
 const FOURTH_FU_DELAY_MINUTES = 12 * 24 * 60;  // 12 days
 
-// Spreadsheet sheet that contains outreach contact data.
-const TARGET_SHEET_NAME = 'NameOfSheet';
-
-
 /**
  * Installable onEdit trigger: fires on ANY sheet when "Status" is edited.
  * Now only dispatches on the tag(s) you just added.
@@ -37,7 +33,6 @@ function onEditTrigger(e) {
   const sh   = ss.getSheetByName(TARGET_SHEET_NAME);
   if (!sh) return;
   if (e.range.getSheet().getName() !== TARGET_SHEET_NAME) return;
-  const sh = e.source.getSheetByName(TARGET_SHEET_NAME);
   if (!sh || e.range.getSheet().getName() !== TARGET_SHEET_NAME) return;
   const hdrs = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
 
@@ -311,7 +306,6 @@ function isLastMessageFromContact_(thread, email) {
 function autoSendFollowUps() {
   const ss   = SpreadsheetApp.getActiveSpreadsheet();
   const sh   = ss.getSheetByName(TARGET_SHEET_NAME);
-  const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TARGET_SHEET_NAME);
   if (!sh) return;
   const hdrs = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
 
