@@ -442,3 +442,30 @@ function autoSendFollowUps() {
     }
   });
 }
+
+/**
+ * Send the outreach email for the currently selected row.
+ * Attach this function to a button for one-click outreach.
+ */
+function startOutreachForSelectedRow() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sh = ss.getSheetByName(TARGET_SHEET_NAME);
+  if (!sh) return;
+  const range = sh.getActiveRange();
+  if (!range) return;
+  const row = range.getRow();
+  if (row <= 1) return;
+
+  const headers = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+  const nameCol  = headers.indexOf('First/Last Name') + 1;
+  const emailCol = headers.indexOf('Email') + 1;
+  if (nameCol < 1 || emailCol < 1) return;
+
+  const values = sh.getRange(row, 1, 1, sh.getLastColumn()).getValues()[0];
+  const full  = values[nameCol - 1] || '';
+  const first = full.split(/\s+/)[0];
+  const email = values[emailCol - 1];
+  if (!email) return;
+
+  sendInitialForRow(email, first);
+}
