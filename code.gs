@@ -10,6 +10,9 @@ const TARGET_SHEET_NAME = 'Contacts';
 // "send as" alias on the account running this script.
 const FROM_ALIAS = 'partnerships@clubkalm.com';
 
+// Background color used when marking a new reply in the sheet.
+const NEW_RESPONSE_COLOR = 'red';
+
 // Number of minutes to wait before each follow-up email is sent.
 // These were previously day-based delays.  For production, keep the
 // minute values equivalent to the desired day delays (e.g. 2 days =
@@ -20,6 +23,9 @@ const SECOND_FU_DELAY_MINUTES = 4  * 24 * 60;  // 4 days
 const THIRD_FU_DELAY_MINUTES  = 7  * 24 * 60;  // 7 days
 const FOURTH_FU_DELAY_MINUTES = 12 * 24 * 60;  // 12 days
 
+// Spreadsheet sheet that contains outreach contact data.
+const TARGET_SHEET_NAME = 'NameOfSheet';
+
 
 /**
  * Installable onEdit trigger: fires on ANY sheet when "Status" is edited.
@@ -27,10 +33,13 @@ const FOURTH_FU_DELAY_MINUTES = 12 * 24 * 60;  // 12 days
  */
 function onEditTrigger(e) {
   if (!e || !e.range) return;
+
   const ss   = SpreadsheetApp.getActiveSpreadsheet();
   const sh   = ss.getSheetByName(TARGET_SHEET_NAME);
   if (!sh) return;
   if (e.range.getSheet().getName() !== TARGET_SHEET_NAME) return;
+  const sh = e.source.getSheetByName(TARGET_SHEET_NAME);
+  if (!sh || e.range.getSheet().getName() !== TARGET_SHEET_NAME) return;
   const hdrs = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
 
   // 1) Find Status column
@@ -298,6 +307,7 @@ function isLastMessageFromContact_(thread, email) {
 function autoSendFollowUps() {
   const ss   = SpreadsheetApp.getActiveSpreadsheet();
   const sh   = ss.getSheetByName(TARGET_SHEET_NAME);
+  const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TARGET_SHEET_NAME);
   if (!sh) return;
   const hdrs = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
 
@@ -329,7 +339,7 @@ function autoSendFollowUps() {
     const thread   = threads[0];
     const replyCell = sh.getRange(row, replyCol);
     if (isLastMessageFromContact_(thread, email)) {
-      replyCell.setValue('New Response').setBackground('lightgreen');
+      replyCell.setValue('New Response').setBackground(NEW_RESPONSE_COLOR);
       return;
     } else {
       replyCell.clearContent().setBackground(null);
