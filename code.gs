@@ -6,9 +6,10 @@ const OUTREACH_SUBJECT = `Hey We'd love to send you some product! // kalm wellne
 // Name of the sheet containing outreach contacts
 const TARGET_SHEET_NAME = 'Contacts';
 
-// Gmail alias used when sending messages. Must be configured as a valid
-// "send as" alias on the account running this script.
-const FROM_ALIAS = 'partnerships@clubkalm.com';
+// Email address used when sending messages. Set this to the Gmail
+// account that owns the script. Using one address avoids issues with
+// aliases and makes reply detection reliable.
+const FROM_ADDRESS = 'creators@clubkalm.com';
 
 // Background color used when marking a new reply in the sheet.
 const NEW_RESPONSE_COLOR = 'red';
@@ -311,7 +312,7 @@ function buildRawMessage_(to, subject, textBody, htmlBody, inReplyTo) {
   const boundary = '----=_Boundary_' + Date.now();
 
   let headers =
-    `From: ${FROM_ALIAS}` + nl +
+    `From: ${FROM_ADDRESS}` + nl +
     `To: ${to}` + nl +
     `Subject: ${subject}` + nl;
 
