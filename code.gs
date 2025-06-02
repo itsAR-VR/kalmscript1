@@ -33,7 +33,6 @@ const TARGET_SHEET_NAME = 'NameOfSheet';
  */
 function onEditTrigger(e) {
   if (!e || !e.range) return;
-
   const ss   = SpreadsheetApp.getActiveSpreadsheet();
   const sh   = ss.getSheetByName(TARGET_SHEET_NAME);
   if (!sh) return;
@@ -271,10 +270,8 @@ function buildRawMessage_(to, subject, textBody, htmlBody, inReplyTo) {
       `In-Reply-To: ${inReplyTo}` + nl +
       `References: ${inReplyTo}` + nl;
   }
-
   const msg =
     headers +
-
   headers +=
     `MIME-Version: 1.0` + nl +
     `Content-Type: multipart/alternative; boundary="${boundary}"` + nl + nl;
