@@ -345,31 +345,43 @@ function buildRawMessage_(to, subject, textBody, htmlBody, inReplyTo) {
 }
 
 /**
-
- * Helper: checks if the most recent message in a thread came from the contact.
-
- * Helper: checks if the contact has replied in the thread since our most
- * recent message. Scans backward until a message not from us is found.
-
+ * Helper: extracts just the email address from a "Name <email>" string.
  *
- * @param {GmailThread} thread The Gmail thread to inspect.
- * @param {string} email       The contact's email address.
- * @return {boolean} True if the most recent non-self message is from the contact.
+ * @param {string} from The header value.
+ * @return {string} Lowercase email address.
  */
-function hasContactReplied_(thread, email) {
-  const myAddr = FROM_ADDRESS.toLowerCase();
-  const target = email.toLowerCase();
-  const messages = thread.getMessages().reverse();
-  for (let msg of messages) {
-    const from  = msg.getFrom();
-    const match = from.match(/<([^>]+)>/);
-    const addr  = (match ? match[1] : from).toLowerCase();
-    if (addr === myAddr) {
-      continue; // skip our own messages
-    }
-    return addr === target;
+function extractEmail_(from) {
+  const match = from.match(/<([^>]+)>/);
+  return (match ? match[1] : from).toLowerCase();
+}
+
+/**
+ * Determines the reply status for a thread.
+ *
+ * @param {GmailThread} thread Gmail thread to examine.
+ * @param {string} email       Contact email address.
+ * @return {string} Status: "New Response", "Replied", or "Waiting".
+ */
+function getLatestThreadStatus_(thread, email) {
+  const messages = thread.getMessages();
+  if (!messages.length) return 'Waiting';
+
+  const myAddr      = FROM_ADDRESS.toLowerCase();
+  const contactAddr = email.toLowerCase();
+
+  const lastMsg   = messages[messages.length - 1];
+  const lastAddr  = extractEmail_(lastMsg.getFrom());
+
+  if (lastAddr === contactAddr) {
+    return 'New Response';
   }
-  return false;
+
+  const contactEver = messages.some(m => extractEmail_(m.getFrom()) === contactAddr);
+  if (lastAddr === myAddr && contactEver) {
+    return 'Replied';
+  }
+
+  return 'Waiting';
 }
 
 /**
@@ -428,16 +440,20 @@ function autoSendFollowUps() {
 
     const thread   = threads[0];
     const replyCell = sh.getRange(row, replyCol);
-    if (hasContactReplied_(thread, email)) {
-      setReplyStatusWithLink_(
-        replyCell,
-        'New Response',
-        thread.getId(),
-        NEW_RESPONSE_COLOR,
-      );
+    const threadStatus = getLatestThreadStatus_(thread, email);
+    const statusColor =
+      threadStatus === 'New Response' ? NEW_RESPONSE_COLOR : null;
+    setReplyStatusWithLink_(replyCell, threadStatus, thread.getId(), statusColor);
+
+    if (threadStatus === 'New Response' || threadStatus === 'Replied') {
+      if (threadStatus === 'Replied' && !tags.includes('Replied')) {
+        tags.push('Replied');
+      }
+      const newStatus = tags.join(', ');
+      if (newStatus !== status) {
+        sh.getRange(row, statusCol).setValue(newStatus);
+      }
       return;
-    } else {
-      replyCell.clearContent().setBackground(null);
     }
 
     const lastMsg  = thread.getMessages().pop();
