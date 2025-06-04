@@ -116,8 +116,6 @@ function sendInitialForRow(email, firstName) {
   Gmail.Users.Messages.send({ raw: raw }, 'me');
 
   Logger.log('Outreach sent via Advanced API to %s with subject "%s"', email, subject);
-
-  Logger.log('Outreach sent via API to %s with subject "%s"', email, subject);
 }
 
 /**
