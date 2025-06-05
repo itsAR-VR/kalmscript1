@@ -57,17 +57,18 @@ function onEditTrigger(e) {
   Logger.log('Tags added: %s', additions.join(', '));
 
   // 4) Find Name & Email columns
-  const nameCol  = hdrs.indexOf('First/Last Name') + 1;
-  const emailCol = hdrs.indexOf('Email')           + 1;
-  if (nameCol < 1 || emailCol < 1) {
-    throw new Error('Headers required: First/Last Name, Email, Status');
+  const firstNameCol = hdrs.indexOf('First Name') + 1;
+  const lastNameCol  = hdrs.indexOf('Last Name') + 1;
+  const emailCol     = hdrs.indexOf('Email') + 1;
+  if (firstNameCol < 1 || lastNameCol < 1 || emailCol < 1) {
+    throw new Error('Headers required: First Name, Last Name, Email, Status');
   }
 
   // 5) Read that row’s data
   const row    = e.range.getRow();
   const vals   = sh.getRange(row, 1, 1, sh.getLastColumn()).getValues()[0];
-  const full   = vals[nameCol - 1] || '';
-  const first  = full.split(/\s+/)[0];
+  const first  = (vals[firstNameCol - 1] || '').toString();
+  const last   = (vals[lastNameCol - 1]  || '').toString();
   const email  = vals[emailCol - 1];
   if (!email) return;
 
@@ -139,17 +140,18 @@ function startOutreachForSelectedRow() {
   if (row <= 1) return;
 
   const hdrs = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
-  const nameCol   = hdrs.indexOf('First/Last Name') + 1;
+  const firstNameCol = hdrs.indexOf('First Name') + 1;
+  const lastNameCol  = hdrs.indexOf('Last Name') + 1;
   const emailCol  = hdrs.indexOf('Email') + 1;
   const statusCol = hdrs.indexOf('Status') + 1;
-  if (nameCol < 1 || emailCol < 1) {
-    SpreadsheetApp.getUi().alert('Headers required: First/Last Name and Email');
+  if (firstNameCol < 1 || lastNameCol < 1 || emailCol < 1) {
+    SpreadsheetApp.getUi().alert('Headers required: First Name, Last Name and Email');
     return;
   }
 
   const vals   = sh.getRange(row, 1, 1, sh.getLastColumn()).getValues()[0];
-  const full   = vals[nameCol - 1] || '';
-  const first  = full.split(/\s+/)[0];
+  const first  = (vals[firstNameCol - 1] || '').toString();
+  const last   = (vals[lastNameCol - 1]  || '').toString();
   const email  = vals[emailCol - 1];
   if (!email) {
     SpreadsheetApp.getUi().alert('No email found for the selected row.');
@@ -408,12 +410,19 @@ function autoSendFollowUps() {
   if (!sh) return;
   const hdrs = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
 
-  const nameCol      = hdrs.indexOf('First/Last Name') + 1;
+  const firstNameCol = hdrs.indexOf('First Name') + 1;
+  const lastNameCol  = hdrs.indexOf('Last Name') + 1;
   const emailCol     = hdrs.indexOf('Email') + 1;
   const statusCol    = hdrs.indexOf('Status') + 1;
   const replyCol     = hdrs.indexOf('Reply Status') + 1;
-  if (nameCol < 1 || emailCol < 1 || statusCol < 1 || replyCol < 1) {
-    throw new Error('Headers required: First/Last Name, Email, Status, Reply Status');
+  if (
+    firstNameCol < 1 ||
+    lastNameCol < 1 ||
+    emailCol < 1 ||
+    statusCol < 1 ||
+    replyCol < 1
+  ) {
+    throw new Error('Headers required: First Name, Last Name, Email, Status, Reply Status');
   }
 
   const numRows = sh.getLastRow() - 1;
@@ -424,8 +433,8 @@ function autoSendFollowUps() {
     const row    = idx + 2;
     const email  = vals[emailCol - 1];
     if (!email) return;
-    const full   = vals[nameCol - 1] || '';
-    const first  = full.split(/\s+/)[0];
+    const first  = (vals[firstNameCol - 1] || '').toString();
+    const last   = (vals[lastNameCol - 1]  || '').toString();
     let status   = vals[statusCol - 1] || '';
     const tags   = status.split(',').map(t => t.trim()).filter(Boolean);
     if (tags.includes('Moved to DM')) return;
