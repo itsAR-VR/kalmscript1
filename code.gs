@@ -356,6 +356,18 @@ function extractEmail_(from) {
 }
 
 /**
+ * Helper: collect all sending addresses including Gmail aliases.
+ *
+ * @return {string[]} Lowercase addresses that belong to the account.
+ */
+function getMyAddresses_() {
+  const aliases = GmailApp.getAliases();
+  return [FROM_ADDRESS.toLowerCase()].concat(
+    aliases.map(a => a.toLowerCase()),
+  );
+}
+
+/**
  * Determines the reply status for a thread.
  *
  * @param {GmailThread} thread Gmail thread to examine.
@@ -366,22 +378,24 @@ function getLatestThreadStatus_(thread, email) {
   const messages = thread.getMessages();
   if (!messages.length) return 'Waiting';
 
-  const myAddr      = FROM_ADDRESS.toLowerCase();
   const contactAddr = email.toLowerCase();
+  const myAddrs = getMyAddresses_();
 
-  const lastMsg   = messages[messages.length - 1];
-  const lastAddr  = extractEmail_(lastMsg.getFrom());
+  const lastMsg  = messages[messages.length - 1];
+  const lastAddr = extractEmail_(lastMsg.getFrom()).toLowerCase();
 
   if (lastAddr === contactAddr) {
     return 'New Response';
   }
 
-  const contactEver = messages.some(m => extractEmail_(m.getFrom()) === contactAddr);
-  if (lastAddr === myAddr && contactEver) {
+  const contactEver = messages.some(m =>
+    extractEmail_(m.getFrom()).toLowerCase() === contactAddr);
+
+  if (myAddrs.includes(lastAddr) && contactEver) {
     return 'Replied';
   }
 
-  return 'Waiting';
+  return contactEver ? 'Replied' : 'Waiting';
 }
 
 /**
