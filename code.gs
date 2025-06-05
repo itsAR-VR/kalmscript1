@@ -4,7 +4,7 @@
 const OUTREACH_SUBJECT = `Hey We'd love to send you some product! // kalm wellness`;
 
 // Name of the sheet containing outreach contacts
-const TARGET_SHEET_NAME = 'Contacts';
+const TARGET_SHEET_NAME = 'Influencer PR';
 
 // Email address used when sending messages. Set this to the Gmail
 // account that owns the script. Using one address avoids issues with
