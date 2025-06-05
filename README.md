@@ -24,7 +24,7 @@ The `FROM_ADDRESS` constant controls which Gmail address the script uses to send
 
 ## Basic Usage
 
-1. In your spreadsheet create columns titled **First/Last Name**, **Email**, **Status**, and **Reply Status**.
+1. In your spreadsheet create columns titled **First Name**, **Last Name**, **Email**, **Status**, and **Reply Status**.
 2. Install an **On edit** trigger for the `onEditTrigger` function.
 3. Install a daily time‑driven trigger for `autoSendFollowUps` so unanswered threads continue to receive follow‑ups automatically.
 4. Add a row for each contact and update the **Status** cell with tags such as `Outreach`, `1st Follow Up`, etc. Editing the status will send the matching email template.
