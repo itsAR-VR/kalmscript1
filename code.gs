@@ -11,7 +11,7 @@ const TARGET_SHEET_NAME = 'Influencer PR';
 // aliases and makes reply detection reliable.
 const FROM_ADDRESS = 'creators@clubkalm.com';
 
-// Background color used when marking a new reply in the sheet.
+// Background color used when marking any reply in the sheet.
 const NEW_RESPONSE_COLOR = 'red';
 
 // Background color used when a contact is moved to DM.
@@ -365,6 +365,17 @@ function getMyAddresses_() {
   return [FROM_ADDRESS.toLowerCase()].concat(
     aliases.map(a => a.toLowerCase()),
   );
+ * Helper: checks if the address belongs to the script owner or any alias.
+ *
+ * @param {string} addr Email address to test.
+ * @return {boolean} True if the address is one of ours.
+ */
+function isMyAddress_(addr) {
+  addr = addr.toLowerCase();
+  const mine = GmailApp.getAliases()
+    .map(a => a.toLowerCase())
+    .concat(Session.getActiveUser().getEmail().toLowerCase(), FROM_ADDRESS.toLowerCase());
+  return mine.some(a => a === addr);
 }
 
 /**
@@ -382,7 +393,11 @@ function getLatestThreadStatus_(thread, email) {
   const myAddrs = getMyAddresses_();
 
   const lastMsg  = messages[messages.length - 1];
+
   const lastAddr = extractEmail_(lastMsg.getFrom()).toLowerCase();
+
+  const lastAddr = extractEmail_(lastMsg.getFrom());
+
 
   if (lastAddr === contactAddr) {
     return 'New Response';
@@ -392,6 +407,10 @@ function getLatestThreadStatus_(thread, email) {
     extractEmail_(m.getFrom()).toLowerCase() === contactAddr);
 
   if (myAddrs.includes(lastAddr) && contactEver) {
+
+  const contactEver = messages.some(m => extractEmail_(m.getFrom()) === contactAddr);
+  if (isMyAddress_(lastAddr) && contactEver) {
+
     return 'Replied';
   }
 
@@ -463,7 +482,9 @@ function autoSendFollowUps() {
     const replyCell = sh.getRange(row, replyCol);
     const threadStatus = getLatestThreadStatus_(thread, email);
     const statusColor =
-      threadStatus === 'New Response' ? NEW_RESPONSE_COLOR : null;
+      threadStatus === 'New Response' || threadStatus === 'Replied'
+        ? NEW_RESPONSE_COLOR
+        : null;
     setReplyStatusWithLink_(replyCell, threadStatus, thread.getId(), statusColor);
 
     if (threadStatus === 'New Response' || threadStatus === 'Replied') {
