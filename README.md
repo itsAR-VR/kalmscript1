@@ -19,6 +19,7 @@ The script sends an initial outreach email and up to four follow‑up messages. 
 ### Configuration
 
 The `FROM_ADDRESS` constant controls which Gmail address the script uses to send messages. Set it to the single account that will manage your outreach. The script checks incoming replies on this same address to stop follow‑ups automatically.
+Any "Send mail as" aliases configured in Gmail are detected automatically, so replies to those addresses are also recognized.
 
 `NEW_RESPONSE_COLOR` sets the background color applied to the **Reply Status** cell when a contact replies. The default is `red` but you can change it to any valid Sheets color name or hex value.
 
