@@ -363,8 +363,11 @@ function extractEmail_(from) {
 function getMyAddresses_() {
   const aliases = GmailApp.getAliases();
   return [FROM_ADDRESS.toLowerCase()].concat(
-    aliases.map(a => a.toLowerCase()),
+    aliases.map(a => a.toLowerCase())
   );
+}
+
+/**
  * Helper: checks if the address belongs to the script owner or any alias.
  *
  * @param {string} addr Email address to test.
