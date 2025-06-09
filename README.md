@@ -30,13 +30,14 @@ auto-sending anytime from **Project Settings → Script properties** by setting
 
 ## Basic Usage
 
-1. In your spreadsheet create columns titled **First Name**, **Last Name**, **Email**, **Status**, and **Reply Status**.
+1. In your spreadsheet create columns titled **First Name**, **Last Name**, **Email**, **Status**, **Reply Status**, and **Thread ID**.
+   The thread ID column will be populated automatically after the first outreach and lets the script reply in the correct Gmail conversation.
 2. Install an **On edit** trigger for the `onEditTrigger` function.
 3. Install a daily time‑driven trigger for `autoSendFollowUps` so unanswered threads continue to receive follow‑ups automatically.
 4. Add a row for each contact and update the **Status** cell with tags such as `Outreach`, `1st Follow Up`, etc. Editing the status will send the matching email template.
 5. Customize the template text and delay constants in `code.gs` as needed.
 6. Each run examines the most recent message in every thread. If the contact wrote last the **Reply Status** cell shows `New Response` in red. Once you respond it changes to `Replied`; otherwise it reads `Waiting`. The status text always links back to the Gmail thread and is refreshed even if you clear the cell. After the final follow‑up the script marks `Moved to DM`.
-7. The follow-up routine searches Gmail using `in:anywhere (to:EMAIL OR from:EMAIL) subject:"SUBJECT"` so threads are matched whether messages were sent to the contact or received from them.
+7. The follow-up routine uses the stored **Thread ID** to open each conversation. If that column is blank it falls back to the search query `in:anywhere (to:EMAIL OR from:EMAIL) subject:"SUBJECT"`.
 
 With the Gmail service enabled and triggers installed, the script manages your outreach and follow‑ups directly from Gmail while updating status information in your spreadsheet.
 
