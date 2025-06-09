@@ -55,6 +55,18 @@ function isAutoSendEnabled() {
 }
 
 /**
+ * Toggle automatic sending of follow-ups on or off.
+ * Can be run from Extensions → Macros or a sheet button.
+ */
+function toggleAutoSendEnabled() {
+  const enabled = !isAutoSendEnabled();
+  setAutoSendEnabled(enabled);
+  SpreadsheetApp.getUi().alert(
+    `Automatic follow-ups ${enabled ? 'enabled' : 'disabled'}.`,
+  );
+}
+
+/**
  * Installable onEdit trigger: fires on ANY sheet when "Status" is edited.
  * Now only dispatches on the tag(s) you just added.
  */
