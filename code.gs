@@ -89,6 +89,10 @@ function onEditTrigger(e) {
   // 3) Compute which tags were just added
   const newTags = newStatus.split(',').map(t => t.trim()).filter(Boolean);
   const oldTags = oldStatus.split(',').map(t => t.trim()).filter(Boolean);
+  if (!newTags.includes('Outreach')) {
+    Logger.log('Row no longer tagged Outreach; skipping trigger.');
+    return;
+  }
   const additions = newTags.filter(t => !oldTags.includes(t));
   if (!additions.length) return;
   Logger.log('Tags added: %s', additions.join(', '));
@@ -596,6 +600,7 @@ function autoSendFollowUps() {
     let status   = vals[statusCol - 1] || '';
     const storedThreadId = vals[threadIdCol - 1];
     const tags   = status.split(',').map(t => t.trim()).filter(Boolean);
+    if (!tags.includes('Outreach')) return;
     if (tags.includes('Moved to DM')) return;
 
     let thread = null;
