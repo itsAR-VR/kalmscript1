@@ -76,7 +76,8 @@ function onEditTrigger(e) {
   const sh   = ss.getSheetByName(TARGET_SHEET_NAME);
   if (!sh || e.range.getSheet().getName() !== TARGET_SHEET_NAME) return;
   const hdrs = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
-  const stageCol = hdrs.indexOf('Stage') + 1;
+  const stageCol  = hdrs.indexOf('Stage') + 1;
+  const threadCol = hdrs.indexOf('Thread ID') + 1;
 
   // 1) Find Status column
   const statusCol = hdrs.indexOf('Status') + 1;
@@ -107,10 +108,11 @@ function onEditTrigger(e) {
 
   // 5) Read that row’s data
   const row    = e.range.getRow();
-  const vals   = sh.getRange(row, 1, 1, sh.getLastColumn()).getValues()[0];
-  const first  = (vals[firstNameCol - 1] || '').toString();
-  const last   = (vals[lastNameCol - 1]  || '').toString();
-  const email  = vals[emailCol - 1];
+  const vals     = sh.getRange(row, 1, 1, sh.getLastColumn()).getValues()[0];
+  const first    = (vals[firstNameCol - 1] || '').toString();
+  const last     = (vals[lastNameCol - 1]  || '').toString();
+  const email    = vals[emailCol - 1];
+  const threadId = threadCol > 0 ? vals[threadCol - 1] : null;
   if (!email) return;
   if (!first && !last) return;
 
@@ -126,28 +128,28 @@ function onEditTrigger(e) {
         break;
       case '1st Follow Up':
         Logger.log('Dispatching 1st Follow-Up for %s', email);
-        sendFirstFollowUpForRow(email, first);
+        sendFirstFollowUpForRow(email, first, threadId);
         if (stageCol > 0) {
           sh.getRange(row, stageCol).setValue('Follow Up 1');
         }
         break;
       case '2nd Follow Up':
         Logger.log('Dispatching 2nd Follow-Up for %s', email);
-        sendSecondFollowUpForRow(email, first);
+        sendSecondFollowUpForRow(email, first, threadId);
         if (stageCol > 0) {
           sh.getRange(row, stageCol).setValue('Follow Up 2');
         }
         break;
       case '3rd Follow Up':
         Logger.log('Dispatching 3rd Follow-Up for %s', email);
-        sendThirdFollowUpForRow(email, first);
+        sendThirdFollowUpForRow(email, first, threadId);
         if (stageCol > 0) {
           sh.getRange(row, stageCol).setValue('Follow Up 3');
         }
         break;
       case '4th Follow Up':
         Logger.log('Dispatching 4th Follow-Up for %s', email);
-        sendFourthFollowUpForRow(email, first);
+        sendFourthFollowUpForRow(email, first, threadId);
         if (stageCol > 0) {
           sh.getRange(row, stageCol).setValue('Follow Up 4');
         }
@@ -275,14 +277,8 @@ function sendFirstFollowUpForRow(email, firstName, threadId) {
     }
   }
   if (!thread) {
-    const query   = `in:anywhere to:${email} subject:"${subject}"`;
-    Logger.log('Search query: %s', query);
-
-    const threads = GmailApp.search(query);
-    Logger.log('Search returned %d thread(s)', threads.length);
-    if (!threads.length) return;
-
-    thread   = threads[0];
+    Logger.log('Thread not found; aborting first follow-up.');
+    return;
   }
   const lastMsg  = thread.getMessages().pop();
   const rawOrig  = lastMsg.getRawContent();
@@ -320,14 +316,8 @@ function sendSecondFollowUpForRow(email, firstName, threadId) {
     }
   }
   if (!thread) {
-    const query   = `in:anywhere to:${email} subject:"${subject}"`;
-    Logger.log('Search query: %s', query);
-
-    const threads = GmailApp.search(query);
-    Logger.log('Search returned %d thread(s)', threads.length);
-    if (!threads.length) return;
-
-    thread   = threads[0];
+    Logger.log('Thread not found; aborting second follow-up.');
+    return;
   }
   const lastMsg  = thread.getMessages().pop();
   const rawOrig  = lastMsg.getRawContent();
@@ -362,14 +352,8 @@ function sendThirdFollowUpForRow(email, firstName, threadId) {
     }
   }
   if (!thread) {
-    const query   = `in:anywhere to:${email} subject:"${subject}"`;
-    Logger.log('Search query: %s', query);
-
-    const threads = GmailApp.search(query);
-    Logger.log('Search returned %d thread(s)', threads.length);
-    if (!threads.length) return;
-
-    thread   = threads[0];
+    Logger.log('Thread not found; aborting third follow-up.');
+    return;
   }
   const lastMsg  = thread.getMessages().pop();
   const rawOrig  = lastMsg.getRawContent();
@@ -405,14 +389,8 @@ function sendFourthFollowUpForRow(email, firstName, threadId) {
     }
   }
   if (!thread) {
-    const query   = `in:anywhere to:${email} subject:"${subject}"`;
-    Logger.log('Search query: %s', query);
-
-    const threads = GmailApp.search(query);
-    Logger.log('Search returned %d thread(s)', threads.length);
-    if (!threads.length) return;
-
-    thread   = threads[0];
+    Logger.log('Thread not found; aborting fourth follow-up.');
+    return;
   }
   const lastMsg  = thread.getMessages().pop();
   const rawOrig  = lastMsg.getRawContent();
