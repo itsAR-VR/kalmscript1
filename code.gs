@@ -428,20 +428,21 @@ function getLatestThreadStatus_(thread, email) {
   if (!messages.length) return 'Waiting';
 
   const contactAddr = email.toLowerCase();
-  const lastMsg = messages[messages.length - 1];
-  const lastAddr = extractEmail_(lastMsg.getFrom()).toLowerCase();
+  const lastAddr = extractEmail_(
+    messages[messages.length - 1].getFrom()
+  ).toLowerCase();
+  const contactEver = messages.some(
+    m => extractEmail_(m.getFrom()).toLowerCase() === contactAddr
+  );
 
   if (lastAddr === contactAddr) {
     return 'New Response';
   }
 
-  const contactEver = messages.some(
-    m => extractEmail_(m.getFrom()).toLowerCase() === contactAddr
-  );
-
   if (isMyAddress_(lastAddr) && contactEver) {
     return 'Replied';
   }
+
   return contactEver ? 'Replied' : 'Waiting';
 }
 
