@@ -17,6 +17,9 @@ const NEW_RESPONSE_COLOR = 'red';
 // Background color used when a contact is moved to DM.
 const MOVED_TO_DM_COLOR = '#d9d9d9';
 
+// Script property key used to control automatic sending of follow-ups.
+const AUTO_SEND_ENABLED_PROP = 'AutoSendEnabled';
+
 // Prefix used to build links back to Gmail threads in the Reply Status column.
 const GMAIL_THREAD_LINK_PREFIX = 'https://mail.google.com/mail/u/0/#inbox/';
 
@@ -29,6 +32,27 @@ const FIRST_FU_DELAY_MINUTES  = 2  * 24 * 60;  // 2 days
 const SECOND_FU_DELAY_MINUTES = 4  * 24 * 60;  // 4 days
 const THIRD_FU_DELAY_MINUTES  = 7  * 24 * 60;  // 7 days
 const FOURTH_FU_DELAY_MINUTES = 12 * 24 * 60;  // 12 days
+
+/**
+ * Enable or disable automatic follow-up sending.
+ *
+ * @param {boolean} enabled TRUE to enable auto-send, FALSE to disable.
+ */
+function setAutoSendEnabled(enabled) {
+  PropertiesService.getScriptProperties()
+    .setProperty(AUTO_SEND_ENABLED_PROP, enabled ? 'true' : 'false');
+}
+
+/**
+ * Check if automatic sending of follow-ups is enabled.
+ *
+ * @return {boolean} TRUE if enabled, otherwise FALSE.
+ */
+function isAutoSendEnabled() {
+  const val = PropertiesService.getScriptProperties()
+    .getProperty(AUTO_SEND_ENABLED_PROP);
+  return val === 'true';
+}
 
 /**
  * Installable onEdit trigger: fires on ANY sheet when "Status" is edited.
@@ -167,6 +191,9 @@ function startOutreachForSelectedRow() {
   }
 
   sendInitialForRow(email, first);
+
+  // Enable automatic follow-up sending after the first outreach.
+  setAutoSendEnabled(true);
 
   if (statusCol > 0) {
     const cell  = sh.getRange(row, statusCol);
@@ -439,6 +466,7 @@ function setReplyStatusWithLink_(cell, text, threadId, color) {
  * Intended to run daily via a time-based Apps Script trigger.
  */
 function autoSendFollowUps() {
+  if (!isAutoSendEnabled()) return;
   const ss   = SpreadsheetApp.getActiveSpreadsheet();
   const sh   = ss.getSheetByName(TARGET_SHEET_NAME);
   if (!sh) return;
