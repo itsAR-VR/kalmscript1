@@ -71,6 +71,7 @@ function onEditTrigger(e) {
   const last   = (vals[lastNameCol - 1]  || '').toString();
   const email  = vals[emailCol - 1];
   if (!email) return;
+  if (!first && !last) return;
 
   // 6) Dispatch exactly for each newly added tag
   additions.forEach(tag => {
@@ -155,6 +156,13 @@ function startOutreachForSelectedRow() {
   const email  = vals[emailCol - 1];
   if (!email) {
     SpreadsheetApp.getUi().alert('No email found for the selected row.');
+    return;
+  }
+
+  if (!first && !last) {
+    SpreadsheetApp.getUi().alert(
+      'First Name and Last Name are blank for the selected row.',
+    );
     return;
   }
 
@@ -461,6 +469,7 @@ function autoSendFollowUps() {
     if (!email) return;
     const first  = (vals[firstNameCol - 1] || '').toString();
     const last   = (vals[lastNameCol - 1]  || '').toString();
+    if (!first && !last) return;
     let status   = vals[statusCol - 1] || '';
     const tags   = status.split(',').map(t => t.trim()).filter(Boolean);
     if (tags.includes('Moved to DM')) return;
