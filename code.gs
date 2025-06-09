@@ -64,6 +64,7 @@ function onEditTrigger(e) {
   const sh   = ss.getSheetByName(TARGET_SHEET_NAME);
   if (!sh || e.range.getSheet().getName() !== TARGET_SHEET_NAME) return;
   const hdrs = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+  const stageCol = hdrs.indexOf('Stage') + 1;
 
   // 1) Find Status column
   const statusCol = hdrs.indexOf('Status') + 1;
@@ -103,22 +104,37 @@ function onEditTrigger(e) {
       case 'Outreach':
         Logger.log('Dispatching Outreach for %s', email);
         sendInitialForRow(email, first, row);
+        if (stageCol > 0) {
+          sh.getRange(row, stageCol).setValue('Outreach');
+        }
         break;
       case '1st Follow Up':
         Logger.log('Dispatching 1st Follow-Up for %s', email);
         sendFirstFollowUpForRow(email, first);
+        if (stageCol > 0) {
+          sh.getRange(row, stageCol).setValue('Follow Up 1');
+        }
         break;
       case '2nd Follow Up':
         Logger.log('Dispatching 2nd Follow-Up for %s', email);
         sendSecondFollowUpForRow(email, first);
+        if (stageCol > 0) {
+          sh.getRange(row, stageCol).setValue('Follow Up 2');
+        }
         break;
       case '3rd Follow Up':
         Logger.log('Dispatching 3rd Follow-Up for %s', email);
         sendThirdFollowUpForRow(email, first);
+        if (stageCol > 0) {
+          sh.getRange(row, stageCol).setValue('Follow Up 3');
+        }
         break;
       case '4th Follow Up':
         Logger.log('Dispatching 4th Follow-Up for %s', email);
         sendFourthFollowUpForRow(email, first);
+        if (stageCol > 0) {
+          sh.getRange(row, stageCol).setValue('Follow Up 4');
+        }
         break;
 
       default:
@@ -181,6 +197,7 @@ function startOutreachForSelectedRow() {
   const lastNameCol  = hdrs.indexOf('Last Name') + 1;
   const emailCol  = hdrs.indexOf('Email') + 1;
   const statusCol = hdrs.indexOf('Status') + 1;
+  const stageCol  = hdrs.indexOf('Stage') + 1;
   if (firstNameCol < 1 || lastNameCol < 1 || emailCol < 1) {
     SpreadsheetApp.getUi().alert('Headers required: First Name, Last Name and Email');
     return;
@@ -206,6 +223,10 @@ function startOutreachForSelectedRow() {
 
   // Enable automatic follow-up sending after the first outreach.
   setAutoSendEnabled(true);
+
+  if (stageCol > 0) {
+    sh.getRange(row, stageCol).setValue('Outreach');
+  }
 
   if (statusCol > 0) {
     const cell  = sh.getRange(row, statusCol);
@@ -534,6 +555,7 @@ function autoSendFollowUps() {
   const lastNameCol  = hdrs.indexOf('Last Name') + 1;
   const emailCol     = hdrs.indexOf('Email') + 1;
   const statusCol    = hdrs.indexOf('Status') + 1;
+  const stageCol     = hdrs.indexOf('Stage') + 1;
   const replyCol     = hdrs.indexOf('Reply Status') + 1;
   const threadIdCol  = hdrs.indexOf('Thread ID') + 1;
   if (
@@ -541,10 +563,11 @@ function autoSendFollowUps() {
     lastNameCol < 1 ||
     emailCol < 1 ||
     statusCol < 1 ||
+    stageCol < 1 ||
     replyCol < 1 ||
     threadIdCol < 1
   ) {
-    throw new Error('Headers required: First Name, Last Name, Email, Status, Reply Status, Thread ID');
+    throw new Error('Headers required: First Name, Last Name, Email, Status, Stage, Reply Status, Thread ID');
   }
 
   const numRows = sh.getLastRow() - 1;
@@ -605,6 +628,9 @@ function autoSendFollowUps() {
     if (!tags.includes('1st Follow Up Sent') && minutesSince >= FIRST_FU_DELAY_MINUTES) {
       sendFirstFollowUpForRow(email, first, thread.getId());
       tags.push('1st Follow Up Sent');
+      if (stageCol > 0) {
+        sh.getRange(row, stageCol).setValue('Follow Up 1');
+      }
     } else if (
       tags.includes('1st Follow Up Sent') &&
       !tags.includes('2nd Follow Up Sent') &&
@@ -612,6 +638,9 @@ function autoSendFollowUps() {
     ) {
       sendSecondFollowUpForRow(email, first, thread.getId());
       tags.push('2nd Follow Up Sent');
+      if (stageCol > 0) {
+        sh.getRange(row, stageCol).setValue('Follow Up 2');
+      }
     } else if (
       tags.includes('2nd Follow Up Sent') &&
       !tags.includes('3rd Follow Up Sent') &&
@@ -619,6 +648,9 @@ function autoSendFollowUps() {
     ) {
       sendThirdFollowUpForRow(email, first, thread.getId());
       tags.push('3rd Follow Up Sent');
+      if (stageCol > 0) {
+        sh.getRange(row, stageCol).setValue('Follow Up 3');
+      }
     } else if (
       tags.includes('3rd Follow Up Sent') &&
       !tags.includes('4th Follow Up Sent') &&
@@ -626,6 +658,9 @@ function autoSendFollowUps() {
     ) {
       sendFourthFollowUpForRow(email, first, thread.getId());
       tags.push('4th Follow Up Sent');
+      if (stageCol > 0) {
+        sh.getRange(row, stageCol).setValue('Follow Up 4');
+      }
     } else if (
       tags.includes('4th Follow Up Sent') &&
       !tags.includes('Moved to DM') &&
@@ -638,6 +673,9 @@ function autoSendFollowUps() {
         MOVED_TO_DM_COLOR,
       );
       tags.push('Moved to DM');
+      if (stageCol > 0) {
+        sh.getRange(row, stageCol).setValue('DM');
+      }
     }
 
     const newStatus = tags.join(', ');

@@ -30,7 +30,7 @@ auto-sending anytime from **Project Settings → Script properties** by setting
 
 ## Basic Usage
 
-1. In your spreadsheet create columns titled **First Name**, **Last Name**, **Email**, **Status**, **Reply Status**, and **Thread ID**.
+1. In your spreadsheet create columns titled **First Name**, **Last Name**, **Email**, **Status**, **Stage**, **Reply Status**, and **Thread ID**.
    The thread ID column will be populated automatically after the first outreach and lets the script reply in the correct Gmail conversation.
 2. Install an **On edit** trigger for the `onEditTrigger` function.
 3. Install a daily time‑driven trigger for `autoSendFollowUps` so unanswered threads continue to receive follow‑ups automatically.
@@ -50,5 +50,5 @@ the currently highlighted row:
 2. Click the shape's menu (three dots) and choose **Assign script**.
 3. Enter `startOutreachForSelectedRow` and save.
 
-Now clicking the button will send the initial outreach email for the active row
-and tag its **Status** cell with `Outreach`.
+Now clicking the button will send the initial outreach email for the active row,
+tag its **Status** cell with `Outreach`, and set the **Stage** column to `Outreach`.
