@@ -26,7 +26,9 @@ Any "Send mail as" aliases configured in Gmail are detected automatically, so re
 `AutoSendEnabled` is a script property that controls whether follow-ups are sent
 automatically. Clicking the outreach button sets it to `TRUE`. You can disable
 auto-sending anytime from **Project Settings → Script properties** by setting
-`AutoSendEnabled` to `FALSE`.
+`AutoSendEnabled` to `FALSE`. To flip this value without opening settings, run
+the `toggleAutoSendEnabled` function from **Extensions → Macros** or assign it
+to a sheet button.
 
 ## Basic Usage
 
@@ -52,3 +54,13 @@ the currently highlighted row:
 
 Now clicking the button will send the initial outreach email for the active row,
 tag its **Status** cell with `Outreach`, and set the **Stage** column to `Outreach`.
+
+Now clicking the button will send the initial outreach email for the active row
+and tag its **Status** cell with `Outreach`.
+
+### Optional: Toggle Auto-Send
+
+Import `toggleAutoSendEnabled` under **Extensions → Macros → Import** to make it
+available from the Macros menu. You can also assign this function to another
+sheet button. Each time it runs, the `AutoSendEnabled` property switches between
+`TRUE` and `FALSE` and a dialog confirms the new state.
