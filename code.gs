@@ -76,7 +76,8 @@ function onEditTrigger(e) {
   const sh   = ss.getSheetByName(TARGET_SHEET_NAME);
   if (!sh || e.range.getSheet().getName() !== TARGET_SHEET_NAME) return;
   const hdrs = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
-  const stageCol = hdrs.indexOf('Stage') + 1;
+  const stageCol  = hdrs.indexOf('Stage') + 1;
+  const threadCol = hdrs.indexOf('Thread ID') + 1;
 
   // 1) Find Status column
   const statusCol = hdrs.indexOf('Status') + 1;
@@ -113,6 +114,11 @@ function onEditTrigger(e) {
   const last   = (vals[lastNameCol - 1]  || '').toString();
   const email  = vals[emailCol - 1];
   const threadId = vals[threadIdCol - 1];
+  const vals     = sh.getRange(row, 1, 1, sh.getLastColumn()).getValues()[0];
+  const first    = (vals[firstNameCol - 1] || '').toString();
+  const last     = (vals[lastNameCol - 1]  || '').toString();
+  const email    = vals[emailCol - 1];
+  const threadId = threadCol > 0 ? vals[threadCol - 1] : null;
   if (!email) return;
   if (!first && !last) return;
 
@@ -279,6 +285,7 @@ function sendFirstFollowUpForRow(email, firstName, threadId) {
   }
   if (!thread) {
     Logger.log('Thread not found for %s; skipping first follow-up.', email);
+    Logger.log('Thread not found; aborting first follow-up.');
     return;
   }
   const lastMsg  = thread.getMessages().pop();
@@ -318,7 +325,9 @@ function sendSecondFollowUpForRow(email, firstName, threadId) {
     }
   }
   if (!thread) {
+
     Logger.log('Thread not found for %s; skipping second follow-up.', email);
+    Logger.log('Thread not found; aborting second follow-up.');
     return;
   }
   const lastMsg  = thread.getMessages().pop();
@@ -359,6 +368,8 @@ function sendThirdFollowUpForRow(email, firstName, threadId) {
   }
   if (!thread) {
     Logger.log('Thread not found for %s; skipping third follow-up.', email);
+    Logger.log('Thread not found; aborting third follow-up.');
+
     return;
   }
   const lastMsg  = thread.getMessages().pop();
@@ -397,6 +408,7 @@ function sendFourthFollowUpForRow(email, firstName, threadId) {
   }
   if (!thread) {
     Logger.log('Thread not found for %s; skipping fourth follow-up.', email);
+    Logger.log('Thread not found; aborting fourth follow-up.');
     return;
   }
   const lastMsg  = thread.getMessages().pop();
@@ -543,11 +555,6 @@ function setReplyStatusWithLink_(cell, text, threadId, color) {
  */
 function autoSendFollowUps() {
   if (!isAutoSendEnabled()) return;
-  const remaining = MailApp.getRemainingDailyQuota();
-  if (remaining < 10) {
-    Logger.log('Daily quota low (%s emails remaining); skipping follow-ups.', remaining);
-    return;
-  }
   const ss   = SpreadsheetApp.getActiveSpreadsheet();
   const sh   = ss.getSheetByName(TARGET_SHEET_NAME);
   if (!sh) return;
