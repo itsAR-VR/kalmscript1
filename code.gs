@@ -102,12 +102,18 @@ function onEditTrigger(e) {
   const firstNameCol = hdrs.indexOf('First Name') + 1;
   const lastNameCol  = hdrs.indexOf('Last Name') + 1;
   const emailCol     = hdrs.indexOf('Email') + 1;
-  if (firstNameCol < 1 || lastNameCol < 1 || emailCol < 1) {
-    throw new Error('Headers required: First Name, Last Name, Email, Status');
+  const threadIdCol  = hdrs.indexOf('Thread ID') + 1;
+  if (firstNameCol < 1 || lastNameCol < 1 || emailCol < 1 || threadIdCol < 1) {
+    throw new Error('Headers required: First Name, Last Name, Email, Status, Thread ID');
   }
 
   // 5) Read that row’s data
   const row    = e.range.getRow();
+  const vals   = sh.getRange(row, 1, 1, sh.getLastColumn()).getValues()[0];
+  const first  = (vals[firstNameCol - 1] || '').toString();
+  const last   = (vals[lastNameCol - 1]  || '').toString();
+  const email  = vals[emailCol - 1];
+  const threadId = vals[threadIdCol - 1];
   const vals     = sh.getRange(row, 1, 1, sh.getLastColumn()).getValues()[0];
   const first    = (vals[firstNameCol - 1] || '').toString();
   const last     = (vals[lastNameCol - 1]  || '').toString();
@@ -263,6 +269,7 @@ function startOutreachForSelectedRow() {
 
 /**
  * 2) First Follow-Up: advanced threaded reply that sets To: explicitly.
+ * Requires a valid Gmail thread ID for the contact.
  */
 function sendFirstFollowUpForRow(email, firstName, threadId) {
   Logger.log('▶ Enter sendFirstFollowUpForRow; email=%s, firstName=%s, threadId=%s', email, firstName, threadId);
@@ -277,6 +284,7 @@ function sendFirstFollowUpForRow(email, firstName, threadId) {
     }
   }
   if (!thread) {
+    Logger.log('Thread not found for %s; skipping first follow-up.', email);
     Logger.log('Thread not found; aborting first follow-up.');
     return;
   }
@@ -302,6 +310,7 @@ function sendFirstFollowUpForRow(email, firstName, threadId) {
 
 /**
  * 3) Second Follow-Up: same advanced send logic.
+ * Requires a valid Gmail thread ID.
  */
 function sendSecondFollowUpForRow(email, firstName, threadId) {
   Logger.log('▶ Enter sendSecondFollowUpForRow; email=%s, firstName=%s, threadId=%s', email, firstName, threadId);
@@ -316,6 +325,8 @@ function sendSecondFollowUpForRow(email, firstName, threadId) {
     }
   }
   if (!thread) {
+
+    Logger.log('Thread not found for %s; skipping second follow-up.', email);
     Logger.log('Thread not found; aborting second follow-up.');
     return;
   }
@@ -339,6 +350,10 @@ function sendSecondFollowUpForRow(email, firstName, threadId) {
   Logger.log('✅ 2nd FU sent via Advanced API to %s in thread %s', email, thread.getId());
 }
 
+/**
+ * 4) Third Follow-Up.
+ * Requires a valid Gmail thread ID.
+ */
 function sendThirdFollowUpForRow(email, firstName, threadId) {
   Logger.log('▶ Enter sendThirdFollowUpForRow; email=%s, firstName=%s, threadId=%s', email, firstName, threadId);
 
@@ -352,7 +367,9 @@ function sendThirdFollowUpForRow(email, firstName, threadId) {
     }
   }
   if (!thread) {
+    Logger.log('Thread not found for %s; skipping third follow-up.', email);
     Logger.log('Thread not found; aborting third follow-up.');
+
     return;
   }
   const lastMsg  = thread.getMessages().pop();
@@ -375,6 +392,7 @@ function sendThirdFollowUpForRow(email, firstName, threadId) {
 
 /**
  * 5) Fourth (Final) Follow‑Up: graceful close‑out 10–12 days later.
+ * Requires a valid Gmail thread ID.
  */
 function sendFourthFollowUpForRow(email, firstName, threadId) {
   Logger.log('▶ Enter sendFourthFollowUpForRow; email=%s, firstName=%s, threadId=%s', email, firstName, threadId);
@@ -389,6 +407,7 @@ function sendFourthFollowUpForRow(email, firstName, threadId) {
     }
   }
   if (!thread) {
+    Logger.log('Thread not found for %s; skipping fourth follow-up.', email);
     Logger.log('Thread not found; aborting fourth follow-up.');
     return;
   }
@@ -531,6 +550,7 @@ function setReplyStatusWithLink_(cell, text, threadId, color) {
 
 /**
  * Automatically send follow-up emails if contacts haven't replied.
+ * Requires a stored Thread ID for each contact and skips any that are missing.
  * Intended to run daily via a time-based Apps Script trigger.
  */
 function autoSendFollowUps() {
@@ -585,13 +605,8 @@ function autoSendFollowUps() {
       }
     }
     if (!thread) {
-      // Search threads that include messages sent to or received from the contact
-      const query   =
-        `in:anywhere (to:${email} OR from:${email}) subject:"${OUTREACH_SUBJECT}"`;
-      const threads = GmailApp.search(query);
-      if (!threads.length) return;
-
-      thread   = threads[0];
+      Logger.log('Thread not found for %s; skipping follow-ups.', email);
+      return;
     }
     const replyCell = sh.getRange(row, replyCol);
     const threadStatus = getLatestThreadStatus_(thread, email);
