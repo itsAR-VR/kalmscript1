@@ -52,12 +52,7 @@ the currently highlighted row:
 1. Insert a drawing or shape in the sheet to use as the button.
 2. Click the shape's menu (three dots) and choose **Assign script**.
 3. Enter `startOutreachForSelectedRow` and save.
-
-Now clicking the button will send the initial outreach email for the active row,
-tag its **Status** cell with `Outreach`, and set the **Stage** column to `Outreach`.
-
-Now clicking the button will send the initial outreach email for the active row
-and tag its **Status** cell with `Outreach`.
+Clicking this button sends the initial outreach email, tags the **Status** cell with `Outreach`, and sets the **Stage** column to `Outreach`.
 
 ### Optional: Toggle Auto-Send
 
