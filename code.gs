@@ -123,6 +123,7 @@ function onEditTrigger(e) {
       case 'Outreach':
         Logger.log('Dispatching Outreach for %s', email);
         sendInitialForRow(email, first, row);
+        setAutoSendEnabled(true);
         if (stageCol > 0) {
           sh.getRange(row, stageCol).setValue('Outreach');
         }
@@ -188,6 +189,9 @@ function sendInitialForRow(email, firstName, rowIndex) {
     }
   }
 
+  // Enable automatic follow-up sending once the first outreach goes out.
+  setAutoSendEnabled(true);
+
   Logger.log('Outreach sent via Advanced API to %s with subject "%s"', email, subject);
 }
 
@@ -240,9 +244,6 @@ function startOutreachForSelectedRow() {
 
   sendInitialForRow(email, first, row);
 
-  // Enable automatic follow-up sending after the first outreach.
-  setAutoSendEnabled(true);
-
   if (stageCol > 0) {
     sh.getRange(row, stageCol).setValue('Outreach');
   }
@@ -281,6 +282,10 @@ function sendFirstFollowUpForRow(email, firstName, threadId) {
   if (!thread) {
     Logger.log('Thread not found for %s; skipping first follow-up.', email);
     Logger.log('Thread not found; aborting first follow-up.');
+    return;
+  }
+  if (thread.getMessageCount() === 0) {
+    Logger.log('No messages in thread %s; skipping first follow-up.', thread.getId());
     return;
   }
   const lastMsg  = thread.getMessages().pop();
@@ -325,6 +330,10 @@ function sendSecondFollowUpForRow(email, firstName, threadId) {
     Logger.log('Thread not found; aborting second follow-up.');
     return;
   }
+  if (thread.getMessageCount() === 0) {
+    Logger.log('No messages in thread %s; skipping second follow-up.', thread.getId());
+    return;
+  }
   const lastMsg  = thread.getMessages().pop();
   const rawOrig  = lastMsg.getRawContent();
   const inReplyTo= (rawOrig.match(/^Message-ID:\s*(<[^>]+>)/mi) || [])[1];
@@ -367,6 +376,10 @@ function sendThirdFollowUpForRow(email, firstName, threadId) {
 
     return;
   }
+  if (thread.getMessageCount() === 0) {
+    Logger.log('No messages in thread %s; skipping third follow-up.', thread.getId());
+    return;
+  }
   const lastMsg  = thread.getMessages().pop();
   const rawOrig  = lastMsg.getRawContent();
   const inReplyTo= (rawOrig.match(/^Message-ID:\s*(<[^>]+>)/mi) || [])[1];
@@ -404,6 +417,10 @@ function sendFourthFollowUpForRow(email, firstName, threadId) {
   if (!thread) {
     Logger.log('Thread not found for %s; skipping fourth follow-up.', email);
     Logger.log('Thread not found; aborting fourth follow-up.');
+    return;
+  }
+  if (thread.getMessageCount() === 0) {
+    Logger.log('No messages in thread %s; skipping fourth follow-up.', thread.getId());
     return;
   }
   const lastMsg  = thread.getMessages().pop();
@@ -489,11 +506,11 @@ function getMyAddresses_() {
  * @param {string} addr Email address to test.
  * @return {boolean} True if the address is one of ours.
  */
-function isMyAddress_(addr) {
+function isMyAddress_(addr, myAddrs) {
   addr = addr.toLowerCase();
-  const mine = GmailApp.getAliases()
-    .map(a => a.toLowerCase())
-    .concat(Session.getActiveUser().getEmail().toLowerCase(), FROM_ADDRESS.toLowerCase());
+  const list = myAddrs || getMyAddresses_();
+  // Include the primary account address in case it's not part of aliases
+  const mine = list.concat(Session.getActiveUser().getEmail().toLowerCase());
   return mine.some(a => a === addr);
 }
 
@@ -504,7 +521,7 @@ function isMyAddress_(addr) {
  * @param {string} email       Contact email address.
  * @return {string} Status: "New Response", "Replied", or "Waiting".
  */
-function getLatestThreadStatus_(thread, email) {
+function getLatestThreadStatus_(thread, email, myAddrs) {
   const messages = thread.getMessages();
   if (!messages.length) return 'Waiting';
 
@@ -520,7 +537,7 @@ function getLatestThreadStatus_(thread, email) {
     return 'New Response';
   }
 
-  if (isMyAddress_(lastAddr) && contactEver) {
+  if (isMyAddress_(lastAddr, myAddrs) && contactEver) {
     return 'Replied';
   }
 
@@ -553,6 +570,9 @@ function autoSendFollowUps() {
     Logger.log('Auto-send disabled; skipping run.');
     return;
   }
+
+  if (!isAutoSendEnabled()) return;
+  const myAddrs = getMyAddresses_();
   const ss   = SpreadsheetApp.getActiveSpreadsheet();
   const sh   = ss.getSheetByName(TARGET_SHEET_NAME);
   if (!sh) return;
@@ -607,7 +627,7 @@ function autoSendFollowUps() {
       return;
     }
     const replyCell = sh.getRange(row, replyCol);
-    const threadStatus = getLatestThreadStatus_(thread, email);
+    const threadStatus = getLatestThreadStatus_(thread, email, myAddrs);
     const statusColor =
       threadStatus === 'New Response' || threadStatus === 'Replied'
         ? NEW_RESPONSE_COLOR
@@ -625,6 +645,10 @@ function autoSendFollowUps() {
       return;
     }
 
+    if (thread.getMessageCount() === 0) {
+      Logger.log('No messages in thread %s; skipping follow-ups for %s.', thread.getId(), email);
+      return;
+    }
     const lastMsg  = thread.getMessages().pop();
     const minutesSince = (Date.now() - lastMsg.getDate().getTime()) / 60000;
 
