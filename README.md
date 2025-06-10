@@ -31,6 +31,10 @@ sent so follow-ups start immediately. You can disable auto-sending anytime from
 `toggleAutoSendEnabled` function from **Extensions → Macros** or assign it to a
 sheet button.
 
+Toggling this value only stops follow-ups logically. The time-driven trigger
+continues to invoke `autoSendFollowUps`, which consumes an execution each day.
+Delete the trigger entirely if you need to pause scheduled runs.
+
 ## Basic Usage
 
 1. In your spreadsheet create columns titled **First Name**, **Last Name**, **Email**, **Status**, **Stage**, **Reply Status**, and **Thread ID**.
@@ -62,3 +66,5 @@ Import `toggleAutoSendEnabled` under **Extensions → Macros → Import** to mak
 available from the Macros menu. You can also assign this function to another
 sheet button. Each time it runs, the `AutoSendEnabled` property switches between
 `TRUE` and `FALSE` and a dialog confirms the new state.
+This does not stop the time-driven trigger from running; delete that trigger if
+you want to halt follow-up checks completely.
