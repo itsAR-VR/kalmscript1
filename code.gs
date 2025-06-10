@@ -535,11 +535,6 @@ function setReplyStatusWithLink_(cell, text, threadId, color) {
  */
 function autoSendFollowUps() {
   if (!isAutoSendEnabled()) return;
-  const remaining = MailApp.getRemainingDailyQuota();
-  if (remaining < 10) {
-    Logger.log('Daily quota low (%s emails remaining); skipping follow-ups.', remaining);
-    return;
-  }
   const ss   = SpreadsheetApp.getActiveSpreadsheet();
   const sh   = ss.getSheetByName(TARGET_SHEET_NAME);
   if (!sh) return;
