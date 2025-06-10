@@ -188,6 +188,9 @@ function sendInitialForRow(email, firstName, rowIndex) {
     }
   }
 
+  // Enable automatic follow-up sending once the first outreach goes out.
+  setAutoSendEnabled(true);
+
   Logger.log('Outreach sent via Advanced API to %s with subject "%s"', email, subject);
 }
 
@@ -239,9 +242,6 @@ function startOutreachForSelectedRow() {
   }
 
   sendInitialForRow(email, first, row);
-
-  // Enable automatic follow-up sending after the first outreach.
-  setAutoSendEnabled(true);
 
   if (stageCol > 0) {
     sh.getRange(row, stageCol).setValue('Outreach');
