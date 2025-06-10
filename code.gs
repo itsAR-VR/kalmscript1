@@ -285,6 +285,8 @@ function sendFirstFollowUpForRow(email, firstName, threadId) {
     return;
   }
   if (thread.getMessageCount() === 0) {
+
+    Logger.log('Thread %s has no messages; skipping first follow-up for %s.', thread.getId(), email);
     Logger.log('No messages in thread %s; skipping first follow-up.', thread.getId());
     return;
   }
@@ -331,6 +333,7 @@ function sendSecondFollowUpForRow(email, firstName, threadId) {
     return;
   }
   if (thread.getMessageCount() === 0) {
+    Logger.log('Thread %s has no messages; skipping second follow-up for %s.', thread.getId(), email);
     Logger.log('No messages in thread %s; skipping second follow-up.', thread.getId());
     return;
   }
@@ -377,7 +380,10 @@ function sendThirdFollowUpForRow(email, firstName, threadId) {
     return;
   }
   if (thread.getMessageCount() === 0) {
+    Logger.log('Thread %s has no messages; skipping third follow-up for %s.', thread.getId(), email);
+
     Logger.log('No messages in thread %s; skipping third follow-up.', thread.getId());
+
     return;
   }
   const lastMsg  = thread.getMessages().pop();
@@ -420,6 +426,7 @@ function sendFourthFollowUpForRow(email, firstName, threadId) {
     return;
   }
   if (thread.getMessageCount() === 0) {
+    Logger.log('Thread %s has no messages; skipping fourth follow-up for %s.', thread.getId(), email);
     Logger.log('No messages in thread %s; skipping fourth follow-up.', thread.getId());
     return;
   }
@@ -646,7 +653,10 @@ function autoSendFollowUps() {
     }
 
     if (thread.getMessageCount() === 0) {
+
+      Logger.log('Thread %s has no messages; skipping follow-ups for %s.', thread.getId(), email);
       Logger.log('No messages in thread %s; skipping follow-ups for %s.', thread.getId(), email);
+
       return;
     }
     const lastMsg  = thread.getMessages().pop();
