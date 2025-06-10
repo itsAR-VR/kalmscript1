@@ -123,6 +123,7 @@ function onEditTrigger(e) {
       case 'Outreach':
         Logger.log('Dispatching Outreach for %s', email);
         sendInitialForRow(email, first, row);
+        setAutoSendEnabled(true);
         if (stageCol > 0) {
           sh.getRange(row, stageCol).setValue('Outreach');
         }
