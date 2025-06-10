@@ -114,11 +114,6 @@ function onEditTrigger(e) {
   const last   = (vals[lastNameCol - 1]  || '').toString();
   const email  = vals[emailCol - 1];
   const threadId = vals[threadIdCol - 1];
-  const vals     = sh.getRange(row, 1, 1, sh.getLastColumn()).getValues()[0];
-  const first    = (vals[firstNameCol - 1] || '').toString();
-  const last     = (vals[lastNameCol - 1]  || '').toString();
-  const email    = vals[emailCol - 1];
-  const threadId = threadCol > 0 ? vals[threadCol - 1] : null;
   if (!email) return;
   if (!first && !last) return;
 
