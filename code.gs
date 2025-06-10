@@ -283,6 +283,10 @@ function sendFirstFollowUpForRow(email, firstName, threadId) {
     Logger.log('Thread not found; aborting first follow-up.');
     return;
   }
+  if (thread.getMessageCount() === 0) {
+    Logger.log('No messages in thread %s; skipping first follow-up.', thread.getId());
+    return;
+  }
   const lastMsg  = thread.getMessages().pop();
   const rawOrig  = lastMsg.getRawContent();
   const inReplyTo= (rawOrig.match(/^Message-ID:\s*(<[^>]+>)/mi) || [])[1];
@@ -323,6 +327,10 @@ function sendSecondFollowUpForRow(email, firstName, threadId) {
 
     Logger.log('Thread not found for %s; skipping second follow-up.', email);
     Logger.log('Thread not found; aborting second follow-up.');
+    return;
+  }
+  if (thread.getMessageCount() === 0) {
+    Logger.log('No messages in thread %s; skipping second follow-up.', thread.getId());
     return;
   }
   const lastMsg  = thread.getMessages().pop();
@@ -367,6 +375,10 @@ function sendThirdFollowUpForRow(email, firstName, threadId) {
 
     return;
   }
+  if (thread.getMessageCount() === 0) {
+    Logger.log('No messages in thread %s; skipping third follow-up.', thread.getId());
+    return;
+  }
   const lastMsg  = thread.getMessages().pop();
   const rawOrig  = lastMsg.getRawContent();
   const inReplyTo= (rawOrig.match(/^Message-ID:\s*(<[^>]+>)/mi) || [])[1];
@@ -404,6 +416,10 @@ function sendFourthFollowUpForRow(email, firstName, threadId) {
   if (!thread) {
     Logger.log('Thread not found for %s; skipping fourth follow-up.', email);
     Logger.log('Thread not found; aborting fourth follow-up.');
+    return;
+  }
+  if (thread.getMessageCount() === 0) {
+    Logger.log('No messages in thread %s; skipping fourth follow-up.', thread.getId());
     return;
   }
   const lastMsg  = thread.getMessages().pop();
@@ -622,6 +638,10 @@ function autoSendFollowUps() {
       return;
     }
 
+    if (thread.getMessageCount() === 0) {
+      Logger.log('No messages in thread %s; skipping follow-ups for %s.', thread.getId(), email);
+      return;
+    }
     const lastMsg  = thread.getMessages().pop();
     const minutesSince = (Date.now() - lastMsg.getDate().getTime()) / 60000;
 
