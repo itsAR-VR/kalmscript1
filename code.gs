@@ -566,6 +566,11 @@ function setReplyStatusWithLink_(cell, text, threadId, color) {
  * Intended to run daily via a time-based Apps Script trigger.
  */
 function autoSendFollowUps() {
+  if (!isAutoSendEnabled()) {
+    Logger.log('Auto-send disabled; skipping run.');
+    return;
+  }
+
   if (!isAutoSendEnabled()) return;
   const myAddrs = getMyAddresses_();
   const ss   = SpreadsheetApp.getActiveSpreadsheet();
