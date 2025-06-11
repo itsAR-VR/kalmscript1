@@ -38,6 +38,10 @@ Delete the trigger entirely if you need to pause scheduled runs.
 
 ## Basic Usage
 
+1. In your spreadsheet create columns titled **First Name**, **Last Name**, **Email**, **Status**, **Stage**, **Reply Status**, and **Message IDs**.
+   The message ID column is populated automatically after each send and prevents duplicate follow‑ups.
+2. Install an **On edit** trigger for the `onEditTrigger` function.
+3. Install a daily time‑driven trigger for `autoSendFollowUps` so unanswered contacts continue to receive follow‑ups automatically.
 1. In your spreadsheet create columns titled **First Name**, **Last Name**, **Email**, **Status**, and **Stage**.
 2. Install an **On edit** trigger for the `onEditTrigger` function.
 
@@ -49,7 +53,10 @@ Delete the trigger entirely if you need to pause scheduled runs.
    Follow-up messages are only sent while the row contains the `Outreach` tag. When a reply is detected or all follow-ups have been sent, the script removes this tag.
    The first outreach email automatically enables auto-sending so subsequent follow-ups are queued without extra steps.
 5. Customize the template text and delay constants in `code.gs` as needed.
+6. Each run checks Gmail for replies from the contact. When a response arrives the **Reply Status** cell changes to `Replied` and the `Outreach` tag is cleared. After the final follow‑up the script marks `Moved to DM`.
+
 6. The script searches Gmail for conversations with each contact by looking for messages to **or** from their address that match the outreach subject. Each hourly run issues at most one Gmail API call per contact (≤24 per day).
+
 
 With the Gmail service enabled and triggers installed, the script manages your outreach and follow‑ups directly from Gmail while updating status information in your spreadsheet.
 
