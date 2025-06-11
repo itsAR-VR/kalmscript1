@@ -112,6 +112,7 @@ function sendInitialForRow(row, email, firstName) {
   const sent = Gmail.Users.Messages.send({ raw: raw }, 'me');
 
   setEmailLinkForRow_(row, sent.threadId);
+  setThreadIdForRow_(row, sent.threadId);
   setStageForRow_(row, 'Outreach');
 
   Logger.log('Outreach sent via Advanced API to %s with subject "%s"', email, subject);
@@ -414,6 +415,22 @@ function setEmailLinkForRow_(row, threadId) {
     .setLinkUrl(GMAIL_THREAD_LINK_PREFIX + threadId)
     .build();
   sh.getRange(row, linkCol).setRichTextValue(rich);
+}
+
+/**
+ * Record the Gmail thread ID for a row.
+ *
+ * @param {number} row      Row number in the sheet.
+ * @param {string} threadId Gmail thread ID.
+ */
+function setThreadIdForRow_(row, threadId) {
+  const ss   = SpreadsheetApp.getActiveSpreadsheet();
+  const sh   = ss.getSheetByName(TARGET_SHEET_NAME);
+  if (!sh) return;
+  const hdrs = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+  const idCol = hdrs.indexOf('Thread ID') + 1;
+  if (idCol < 1) return;
+  sh.getRange(row, idCol).setValue(threadId);
 }
 
 /**
