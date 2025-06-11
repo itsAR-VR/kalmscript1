@@ -1,4 +1,9 @@
 /**
+ * Outreach emails and follow‑ups run once per hour. Thread IDs and
+ * explicit reply‑status columns are obsolete—the script now checks
+ * for replies via Gmail search before sending the next follow‑up.
+ */
+/**
  * The exact subject for Outreach and for thread-matching in all helpers.
  */
 const OUTREACH_SUBJECT = `Hey We'd love to send you some product! // kalm wellness`;
@@ -178,7 +183,7 @@ function sendInitialForRow(email, firstName, rowIndex) {
   const textBody = `Hi ${firstName},\n\nThanks for connecting—here’s the info we discussed.\n\nBest,\nKam Ordonez`;
 
   const raw = buildRawMessage_(email, subject, textBody, htmlBody);
-  const response = Gmail.Users.Messages.send({ raw: raw }, 'me');
+  const response = sendWithRetry_({ raw: raw });
 
   if (rowIndex) {
     const ss   = SpreadsheetApp.getActiveSpreadsheet();
@@ -285,10 +290,17 @@ function sendFirstFollowUpForRow(email, firstName, msgIds) {
   const htmlBody = tpl.evaluate().getContent();
   const textBody = `Hi ${firstName},\n\nJust checking in—any questions?\n\nBest,\nKam Ordonez`;
 
+
   const raw = buildRawMessage_(email, `Re: ${subject}`, textBody, htmlBody);
   const res = Gmail.Users.Messages.send({ raw: raw }, 'me');
   Logger.log('✅ 1st FU sent via Advanced API to %s', email);
   return res.id;
+
+  // Build raw RFC-2822 reply
+  const raw = buildRawMessage_(email, `Re: ${subject}`, textBody, htmlBody, inReplyTo);
+  sendWithRetry_({ threadId: thread.getId(), raw: raw });
+  Logger.log('✅ 1st FU sent via Advanced API to %s in thread %s', email, thread.getId());
+
 }
 
 /**
@@ -309,10 +321,17 @@ function sendSecondFollowUpForRow(email, firstName, msgIds) {
   const htmlBody = tpl.evaluate().getContent();
   const textBody = `Hi ${firstName},\n\nJust checking-in let me know if you need anything else!\n\nBest,\nKam Ordonez`;
 
+
   const raw = buildRawMessage_(email, `Re: ${subject}`, textBody, htmlBody);
   const res = Gmail.Users.Messages.send({ raw: raw }, 'me');
   Logger.log('✅ 2nd FU sent via Advanced API to %s', email);
   return res.id;
+
+  // Build and send raw reply
+  const raw = buildRawMessage_(email, `Re: ${subject}`, textBody, htmlBody, inReplyTo);
+  sendWithRetry_({ threadId: thread.getId(), raw: raw });
+  Logger.log('✅ 2nd FU sent via Advanced API to %s in thread %s', email, thread.getId());
+
 }
 
 /**
@@ -333,10 +352,16 @@ function sendThirdFollowUpForRow(email, firstName, msgIds) {
   const htmlBody = tpl.evaluate().getContent();
   const textBody = `Hi ${firstName},\n\nQuick nudge—your complimentary Kalm mouth‑tape pack is still reserved for you. Just reply with your address and I’ll ship it right away!\n\nWarmly,\nKam Ordonez`;
 
+
   const raw = buildRawMessage_(email, `Re: ${subject}`, textBody, htmlBody);
   const res = Gmail.Users.Messages.send({ raw: raw }, 'me');
   Logger.log('✅ 3rd FU sent via Advanced API to %s', email);
   return res.id;
+
+  const raw = buildRawMessage_(email, `Re: ${subject}`, textBody, htmlBody, inReplyTo);
+  sendWithRetry_({ threadId: thread.getId(), raw: raw });
+  Logger.log('✅ 3rd FU sent via Advanced API to %s in thread %s', email, thread.getId());
+
 }
 
 /**
@@ -357,10 +382,16 @@ function sendFourthFollowUpForRow(email, firstName, msgIds) {
   const htmlBody = tpl.evaluate().getContent();
   const textBody = `Hi ${firstName},\n\nThis is my last check‑in for now. If calmer, clearer sleep isn’t on your radar yet, no worries—just reply “later”. Otherwise, send your address anytime and I’ll pop your free sample in the mail.\n\nFind your Kalm,\nKam Ordonez`;
 
+
   const raw = buildRawMessage_(email, `Re: ${subject}`, textBody, htmlBody);
   const res = Gmail.Users.Messages.send({ raw: raw }, 'me');
   Logger.log('✅ 4th FU sent via Advanced API to %s', email);
   return res.id;
+
+  const raw = buildRawMessage_(email, `Re: ${subject}`, textBody, htmlBody, inReplyTo);
+  sendWithRetry_({ threadId: thread.getId(), raw: raw });
+  Logger.log('✅ 4th FU sent via Advanced API to %s in thread %s', email, thread.getId());
+
 }
 
 /**
@@ -400,6 +431,7 @@ function buildRawMessage_(to, subject, textBody, htmlBody, inReplyTo) {
 }
 
 /**
+
  * Parse a comma-separated Message-ID string into an array.
  *
  * @param {string} ids Comma separated IDs.
@@ -453,6 +485,31 @@ function hasRecentReply_(email, days) {
   const q = `from:${email} newer_than:${days}d -in:sent`;
   const res = Gmail.Users.Messages.list({ q: q }, 'me');
   return (res.messages || []).length > 0;
+
+ * Helper: send a message via the Gmail API with retries on rate limit
+ * or server errors.
+ *
+ * @param {object} payload      Payload for `Gmail.Users.Messages.send`.
+ * @param {number} [maxAttempts=5]  Maximum attempts to try.
+ * @return {object} API response from Gmail.
+ */
+function sendWithRetry_(payload, maxAttempts) {
+  maxAttempts = maxAttempts || 5;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      return Gmail.Users.Messages.send(payload, 'me');
+    } catch (err) {
+      const msg = err && err.message ? err.message : '';
+      const match = msg.match(/returned code (\d+)/);
+      const code = match ? parseInt(match[1], 10) : NaN;
+      if (attempt < maxAttempts - 1 && (code === 429 || (code >= 500 && code < 600))) {
+        Utilities.sleep(Math.pow(2, attempt) * 1000);
+        continue;
+      }
+      throw err;
+    }
+  }
+
 }
 
 /**
@@ -505,8 +562,13 @@ function setReplyStatus_(cell, text, color) {
 
 /**
  * Automatically send follow-up emails if contacts haven't replied.
+
  * Uses stored Message-IDs to avoid duplicate sends.
  * Intended to run daily via a time-based Apps Script trigger.
+
+ * Requires a stored Thread ID for each contact and skips any that are missing.
+ * Intended to run hourly via a time-based Apps Script trigger (`.everyHours(1)`).
+
  */
 function autoSendFollowUps() {
   if (!isAutoSendEnabled()) {
@@ -514,8 +576,14 @@ function autoSendFollowUps() {
     return;
   }
 
+
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sh = ss.getSheetByName(TARGET_SHEET_NAME);
+
+  const myAddrs = getMyAddresses_();
+  const ss   = SpreadsheetApp.getActiveSpreadsheet();
+  const sh   = ss.getSheetByName(TARGET_SHEET_NAME);
+
   if (!sh) return;
   const hdrs = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
 
