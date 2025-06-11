@@ -39,7 +39,10 @@ function setAutoSendEnabled(enabled) {
  *
  * @return {boolean} TRUE if enabled, otherwise FALSE.
  */
-@@ -55,158 +46,155 @@ function isAutoSendEnabled() {
+function isAutoSendEnabled() {
+  const val = PropertiesService.getScriptProperties()
+    .getProperty(AUTO_SEND_ENABLED_PROP);
+  return val && val.toLowerCase() === 'true';
 }
 
 /**
@@ -195,7 +198,33 @@ function startOutreachForSelectedRow() {
     return;
   }
 
-@@ -243,231 +231,166 @@ function startOutreachForSelectedRow() {
+  const range = sh.getActiveRange();
+  if (!range) return;
+  const row = range.getRow();
+  if (row <= 1) return;
+
+  const hdrs = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+  const firstNameCol = hdrs.indexOf('First Name') + 1;
+  const lastNameCol  = hdrs.indexOf('Last Name') + 1;
+  const emailCol     = hdrs.indexOf('Email') + 1;
+  const statusCol    = hdrs.indexOf('Status') + 1;
+  const stageCol     = hdrs.indexOf('Stage') + 1;
+  if (firstNameCol < 1 || lastNameCol < 1 || emailCol < 1) {
+    SpreadsheetApp.getUi().alert('Headers required: First Name, Last Name and Email');
+    return;
+  }
+
+  const vals   = sh.getRange(row, 1, 1, sh.getLastColumn()).getValues()[0];
+  const first  = (vals[firstNameCol - 1] || '').toString();
+  const last   = (vals[lastNameCol - 1]  || '').toString();
+  const email  = vals[emailCol - 1];
+  if (!email) {
+    SpreadsheetApp.getUi().alert('No email found for the selected row.');
+    return;
+  }
+  if (!first && !last) {
+    SpreadsheetApp.getUi().alert('No name found for the selected row.');
+    return;
   }
 
   sendInitialForRow(email, first, row);
@@ -362,7 +391,38 @@ function buildRawMessage_(to, subject, textBody, htmlBody, inReplyTo) {
     `MIME-Version: 1.0` + nl +
     `Content-Type: multipart/alternative; boundary="${boundary}"` + nl + nl;
 
-@@ -506,219 +429,179 @@ function getMyAddresses_() {
+  const body =
+    `--${boundary}` + nl +
+    `Content-Type: text/plain; charset="UTF-8"` + nl + nl +
+    textBody + nl + nl +
+    `--${boundary}` + nl +
+    `Content-Type: text/html; charset="UTF-8"` + nl + nl +
+    htmlBody + nl + nl +
+    `--${boundary}--`;
+
+  const msg = headers + body;
+  return Utilities.base64EncodeWebSafe(msg);
+}
+
+/**
+ * Helper: extracts just the email address from a "Name <email>" string.
+ *
+ * @param {string} from The header value.
+ * @return {string} Lowercase email address.
+ */
+function extractEmail_(from) {
+  const match = from.match(/<([^>]+)>/);
+  return (match ? match[1] : from).toLowerCase();
+}
+
+/**
+ * Helper: collect all sending addresses including Gmail aliases.
+ *
+ * @return {string[]} Lowercase addresses that belong to the account.
+ */
+function getMyAddresses_() {
+  const aliases = GmailApp.getAliases();
+  return [FROM_ADDRESS.toLowerCase()].concat(
     aliases.map(a => a.toLowerCase())
   );
 }
