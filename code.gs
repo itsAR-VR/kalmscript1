@@ -44,7 +44,10 @@ function setAutoSendEnabled(enabled) {
  *
  * @return {boolean} TRUE if enabled, otherwise FALSE.
  */
-@@ -55,161 +46,148 @@ function isAutoSendEnabled() {
+function isAutoSendEnabled() {
+  const val = PropertiesService.getScriptProperties()
+    .getProperty(AUTO_SEND_ENABLED_PROP);
+  return val === 'true';
 }
 
 /**
@@ -193,7 +196,6 @@ function startOutreachForSelectedRow() {
   const range = sh.getActiveRange();
   if (!range) return;
   const row = range.getRow();
-@@ -245,206 +223,173 @@ function startOutreachForSelectedRow() {
   sendInitialForRow(email, first, row);
 
   if (stageCol > 0) {
@@ -367,7 +369,56 @@ function sendFourthFollowUpForRow(email, firstName) {
   Logger.log('✅ 4th FU sent via Advanced API to %s in thread %s', email, thread.getId());
 }
 
-@@ -500,225 +445,187 @@ function extractEmail_(from) {
+/**
+ * Helper: builds a base64-URL-encoded RFC-2822 multipart/alternative message
+ * with optional reply headers.
+ *
+ * @param {string} to        Recipient address.
+ * @param {string} subject   Message subject line.
+ * @param {string} textBody  Plain text body.
+ * @param {string} htmlBody  HTML body.
+ * @param {string} [inReplyTo] Message-ID being replied to.
+ * @return {string} Base64url encoded RFC-2822 message.
+ */
+function buildRawMessage_(to, subject, textBody, htmlBody, inReplyTo) {
+  const nl       = '\r\n';
+  const boundary = '----=_Boundary_' + Date.now();
+
+  let headers =
+    `From: ${FROM_ADDRESS}` + nl +
+    `To: ${to}` + nl +
+    `Subject: ${subject}` + nl;
+
+  if (inReplyTo) {
+    headers +=
+      `In-Reply-To: ${inReplyTo}` + nl +
+      `References: ${inReplyTo}` + nl;
+  }
+
+  headers +=
+    `MIME-Version: 1.0` + nl +
+    `Content-Type: multipart/alternative; boundary="${boundary}"` + nl + nl;
+
+  const body =
+    `--${boundary}` + nl +
+    `Content-Type: text/plain; charset="UTF-8"` + nl + nl +
+    textBody + nl + nl +
+    `--${boundary}` + nl +
+    `Content-Type: text/html; charset="UTF-8"` + nl + nl +
+    htmlBody + nl + nl +
+    `--${boundary}--`;
+
+  const msg = headers + body;
+  return Utilities.base64EncodeWebSafe(msg);
+}
+
+function extractEmail_(from) {
+  const match = from.match(/<([^>]+)>/);
+  return (match ? match[1] : from).toLowerCase();
+}
+
+/**
+ * Helper: collect all sending addresses including Gmail aliases.
  *
  * @return {string[]} Lowercase addresses that belong to the account.
  */
