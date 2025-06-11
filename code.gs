@@ -11,11 +11,6 @@ const TARGET_SHEET_NAME = 'Influencer PR';
 // aliases and makes reply detection reliable.
 const FROM_ADDRESS = 'creators@clubkalm.com';
 
-// Background color used when marking any reply in the sheet.
-const NEW_RESPONSE_COLOR = 'red';
-
-// Background color used when a contact is moved to DM.
-const MOVED_TO_DM_COLOR = '#d9d9d9';
 
 // Prefix used to build links back to Gmail threads in the Reply Status column.
 const GMAIL_THREAD_LINK_PREFIX = 'https://mail.google.com/mail/u/0/#inbox/';
@@ -77,23 +72,23 @@ function onEditTrigger(e) {
     switch (tag) {
       case 'Outreach':
         Logger.log('Dispatching Outreach for %s', email);
-        sendInitialForRow(email, first);
+        sendInitialForRow(row, email, first);
         break;
       case '1st Follow Up':
         Logger.log('Dispatching 1st Follow-Up for %s', email);
-        sendFirstFollowUpForRow(email, first);
+        sendFirstFollowUpForRow(row, email, first);
         break;
       case '2nd Follow Up':
         Logger.log('Dispatching 2nd Follow-Up for %s', email);
-        sendSecondFollowUpForRow(email, first);
+        sendSecondFollowUpForRow(row, email, first);
         break;
       case '3rd Follow Up':
         Logger.log('Dispatching 3rd Follow-Up for %s', email);
-        sendThirdFollowUpForRow(email, first);
+        sendThirdFollowUpForRow(row, email, first);
         break;
       case '4th Follow Up':
         Logger.log('Dispatching 4th Follow-Up for %s', email);
-        sendFourthFollowUpForRow(email, first);
+        sendFourthFollowUpForRow(row, email, first);
         break;
 
       default:
@@ -106,7 +101,7 @@ function onEditTrigger(e) {
 /**
  * 1) Outreach: one-off sendEmail using OutreachTemplate.html
  */
-function sendInitialForRow(email, firstName) {
+function sendInitialForRow(row, email, firstName) {
   const subject  = OUTREACH_SUBJECT;
   const tpl      = HtmlService.createTemplateFromFile('OutreachTemplate');
   tpl.firstName  = firstName;
@@ -114,7 +109,10 @@ function sendInitialForRow(email, firstName) {
   const textBody = `Hi ${firstName},\n\nThanks for connecting—here’s the info we discussed.\n\nBest,\nKam Ordonez`;
 
   const raw = buildRawMessage_(email, subject, textBody, htmlBody);
-  Gmail.Users.Messages.send({ raw: raw }, 'me');
+  const sent = Gmail.Users.Messages.send({ raw: raw }, 'me');
+
+  setEmailLinkForRow_(row, sent.threadId);
+  setStageForRow_(row, 'Outreach');
 
   Logger.log('Outreach sent via Advanced API to %s with subject "%s"', email, subject);
 }
@@ -158,7 +156,7 @@ function startOutreachForSelectedRow() {
     return;
   }
 
-  sendInitialForRow(email, first);
+  sendInitialForRow(row, email, first);
 
   if (statusCol > 0) {
     const cell  = sh.getRange(row, statusCol);
@@ -178,7 +176,7 @@ function startOutreachForSelectedRow() {
 /**
  * 2) First Follow-Up: advanced threaded reply that sets To: explicitly.
  */
-function sendFirstFollowUpForRow(email, firstName) {
+function sendFirstFollowUpForRow(row, email, firstName) {
   Logger.log('▶ Enter sendFirstFollowUpForRow; email=%s, firstName=%s', email, firstName);
 
   const subject = OUTREACH_SUBJECT;
@@ -206,14 +204,18 @@ function sendFirstFollowUpForRow(email, firstName) {
 
   // Build raw RFC-2822 reply
   const raw = buildRawMessage_(email, `Re: ${subject}`, textBody, htmlBody, inReplyTo);
-  Gmail.Users.Messages.send({ threadId: thread.getId(), raw: raw }, 'me');
+  const sent = Gmail.Users.Messages.send({ threadId: thread.getId(), raw: raw }, 'me');
+
+  setEmailLinkForRow_(row, thread.getId());
+  setStageForRow_(row, '1st Follow Up');
+
   Logger.log('✅ 1st FU sent via Advanced API to %s in thread %s', email, thread.getId());
 }
 
 /**
  * 3) Second Follow-Up: same advanced send logic.
  */
-function sendSecondFollowUpForRow(email, firstName) {
+function sendSecondFollowUpForRow(row, email, firstName) {
   Logger.log('▶ Enter sendSecondFollowUpForRow; email=%s, firstName=%s', email, firstName);
 
   const subject = OUTREACH_SUBJECT;
@@ -241,11 +243,15 @@ function sendSecondFollowUpForRow(email, firstName) {
 
   // Build and send raw reply
   const raw = buildRawMessage_(email, `Re: ${subject}`, textBody, htmlBody, inReplyTo);
-  Gmail.Users.Messages.send({ threadId: thread.getId(), raw: raw }, 'me');
+  const sent = Gmail.Users.Messages.send({ threadId: thread.getId(), raw: raw }, 'me');
+
+  setEmailLinkForRow_(row, thread.getId());
+  setStageForRow_(row, '2nd Follow Up');
+
   Logger.log('✅ 2nd FU sent via Advanced API to %s in thread %s', email, thread.getId());
 }
 
-function sendThirdFollowUpForRow(email, firstName) {
+function sendThirdFollowUpForRow(row, email, firstName) {
   Logger.log('▶ Enter sendThirdFollowUpForRow; email=%s, firstName=%s', email, firstName);
 
   const subject = OUTREACH_SUBJECT;
@@ -271,14 +277,18 @@ function sendThirdFollowUpForRow(email, firstName) {
   const textBody = `Hi ${firstName},\n\nQuick nudge—your complimentary Kalm mouth‑tape pack is still reserved for you. Just reply with your address and I’ll ship it right away!\n\nWarmly,\nKam Ordonez`;
 
   const raw = buildRawMessage_(email, `Re: ${subject}`, textBody, htmlBody, inReplyTo);
-  Gmail.Users.Messages.send({ threadId: thread.getId(), raw: raw }, 'me');
+  const sent = Gmail.Users.Messages.send({ threadId: thread.getId(), raw: raw }, 'me');
+
+  setEmailLinkForRow_(row, thread.getId());
+  setStageForRow_(row, '3rd Follow Up');
+
   Logger.log('✅ 3rd FU sent via Advanced API to %s in thread %s', email, thread.getId());
 }
 
 /**
  * 5) Fourth (Final) Follow‑Up: graceful close‑out 10–12 days later.
  */
-function sendFourthFollowUpForRow(email, firstName) {
+function sendFourthFollowUpForRow(row, email, firstName) {
   Logger.log('▶ Enter sendFourthFollowUpForRow; email=%s, firstName=%s', email, firstName);
 
   const subject = OUTREACH_SUBJECT;
@@ -304,7 +314,11 @@ function sendFourthFollowUpForRow(email, firstName) {
   const textBody = `Hi ${firstName},\n\nThis is my last check‑in for now. If calmer, clearer sleep isn’t on your radar yet, no worries—just reply “later”. Otherwise, send your address anytime and I’ll pop your free sample in the mail.\n\nFind your Kalm,\nKam Ordonez`;
 
   const raw = buildRawMessage_(email, `Re: ${subject}`, textBody, htmlBody, inReplyTo);
-  Gmail.Users.Messages.send({ threadId: thread.getId(), raw: raw }, 'me');
+  const sent = Gmail.Users.Messages.send({ threadId: thread.getId(), raw: raw }, 'me');
+
+  setEmailLinkForRow_(row, thread.getId());
+  setStageForRow_(row, '4th Follow Up');
+
   Logger.log('✅ 4th FU sent via Advanced API to %s in thread %s', email, thread.getId());
 }
 
@@ -365,6 +379,9 @@ function getMyAddresses_() {
   return [FROM_ADDRESS.toLowerCase()].concat(
     aliases.map(a => a.toLowerCase()),
   );
+}
+
+/**
  * Helper: checks if the address belongs to the script owner or any alias.
  *
  * @param {string} addr Email address to test.
@@ -378,59 +395,41 @@ function isMyAddress_(addr) {
   return mine.some(a => a === addr);
 }
 
+
 /**
- * Determines the reply status for a thread.
+ * Record the Gmail thread link for a row.
  *
- * @param {GmailThread} thread Gmail thread to examine.
- * @param {string} email       Contact email address.
- * @return {string} Status: "New Response", "Replied", or "Waiting".
+ * @param {number} row      Row number in the sheet.
+ * @param {string} threadId Gmail thread ID to link.
  */
-function getLatestThreadStatus_(thread, email) {
-  const messages = thread.getMessages();
-  if (!messages.length) return 'Waiting';
-
-  const contactAddr = email.toLowerCase();
-  const myAddrs = getMyAddresses_();
-
-  const lastMsg  = messages[messages.length - 1];
-
-  const lastAddr = extractEmail_(lastMsg.getFrom()).toLowerCase();
-
-  const lastAddr = extractEmail_(lastMsg.getFrom());
-
-
-  if (lastAddr === contactAddr) {
-    return 'New Response';
-  }
-
-  const contactEver = messages.some(m =>
-    extractEmail_(m.getFrom()).toLowerCase() === contactAddr);
-
-  if (myAddrs.includes(lastAddr) && contactEver) {
-
-  const contactEver = messages.some(m => extractEmail_(m.getFrom()) === contactAddr);
-  if (isMyAddress_(lastAddr) && contactEver) {
-
-    return 'Replied';
-  }
-
-  return contactEver ? 'Replied' : 'Waiting';
+function setEmailLinkForRow_(row, threadId) {
+  const ss   = SpreadsheetApp.getActiveSpreadsheet();
+  const sh   = ss.getSheetByName(TARGET_SHEET_NAME);
+  if (!sh) return;
+  const hdrs = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+  const linkCol = hdrs.indexOf('Email Link') + 1;
+  if (linkCol < 1) return;
+  const rich = SpreadsheetApp.newRichTextValue()
+    .setText('Thread')
+    .setLinkUrl(GMAIL_THREAD_LINK_PREFIX + threadId)
+    .build();
+  sh.getRange(row, linkCol).setRichTextValue(rich);
 }
 
 /**
- * Helper to write a status value linked to the Gmail thread.
+ * Update the Stage column for a row.
  *
- * @param {Range} cell      The Reply Status cell to update.
- * @param {string} text     Display text such as "New Response".
- * @param {string} threadId Gmail thread ID for the hyperlink.
- * @param {string} color    Background color to apply.
+ * @param {number} row   Row number in the sheet.
+ * @param {string} stage Stage text to set.
  */
-function setReplyStatusWithLink_(cell, text, threadId, color) {
-  const rich = SpreadsheetApp.newRichTextValue()
-    .setText(text)
-    .setLinkUrl(GMAIL_THREAD_LINK_PREFIX + threadId)
-    .build();
-  cell.setRichTextValue(rich).setBackground(color);
+function setStageForRow_(row, stage) {
+  const ss   = SpreadsheetApp.getActiveSpreadsheet();
+  const sh   = ss.getSheetByName(TARGET_SHEET_NAME);
+  if (!sh) return;
+  const hdrs = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+  const stageCol = hdrs.indexOf('Stage') + 1;
+  if (stageCol < 1) return;
+  sh.getRange(row, stageCol).setValue(stage);
 }
 
 /**
@@ -447,15 +446,13 @@ function autoSendFollowUps() {
   const lastNameCol  = hdrs.indexOf('Last Name') + 1;
   const emailCol     = hdrs.indexOf('Email') + 1;
   const statusCol    = hdrs.indexOf('Status') + 1;
-  const replyCol     = hdrs.indexOf('Reply Status') + 1;
   if (
     firstNameCol < 1 ||
     lastNameCol < 1 ||
     emailCol < 1 ||
-    statusCol < 1 ||
-    replyCol < 1
+    statusCol < 1
   ) {
-    throw new Error('Headers required: First Name, Last Name, Email, Status, Reply Status');
+    throw new Error('Headers required: First Name, Last Name, Email, Status');
   }
 
   const numRows = sh.getLastRow() - 1;
@@ -470,7 +467,6 @@ function autoSendFollowUps() {
     const last   = (vals[lastNameCol - 1]  || '').toString();
     let status   = vals[statusCol - 1] || '';
     const tags   = status.split(',').map(t => t.trim()).filter(Boolean);
-    if (tags.includes('Moved to DM')) return;
 
     // Search threads that include messages sent to or received from the contact
     const query   =
@@ -479,64 +475,34 @@ function autoSendFollowUps() {
     if (!threads.length) return;
 
     const thread   = threads[0];
-    const replyCell = sh.getRange(row, replyCol);
-    const threadStatus = getLatestThreadStatus_(thread, email);
-    const statusColor =
-      threadStatus === 'New Response' || threadStatus === 'Replied'
-        ? NEW_RESPONSE_COLOR
-        : null;
-    setReplyStatusWithLink_(replyCell, threadStatus, thread.getId(), statusColor);
-
-    if (threadStatus === 'New Response' || threadStatus === 'Replied') {
-      if (threadStatus === 'Replied' && !tags.includes('Replied')) {
-        tags.push('Replied');
-      }
-      const newStatus = tags.join(', ');
-      if (newStatus !== status) {
-        sh.getRange(row, statusCol).setValue(newStatus);
-      }
-      return;
-    }
 
     const lastMsg  = thread.getMessages().pop();
     const minutesSince = (Date.now() - lastMsg.getDate().getTime()) / 60000;
 
     if (!tags.includes('1st Follow Up Sent') && minutesSince >= FIRST_FU_DELAY_MINUTES) {
-      sendFirstFollowUpForRow(email, first);
+      sendFirstFollowUpForRow(row, email, first);
       tags.push('1st Follow Up Sent');
     } else if (
       tags.includes('1st Follow Up Sent') &&
       !tags.includes('2nd Follow Up Sent') &&
       minutesSince >= SECOND_FU_DELAY_MINUTES
     ) {
-      sendSecondFollowUpForRow(email, first);
+      sendSecondFollowUpForRow(row, email, first);
       tags.push('2nd Follow Up Sent');
     } else if (
       tags.includes('2nd Follow Up Sent') &&
       !tags.includes('3rd Follow Up Sent') &&
       minutesSince >= THIRD_FU_DELAY_MINUTES
     ) {
-      sendThirdFollowUpForRow(email, first);
+      sendThirdFollowUpForRow(row, email, first);
       tags.push('3rd Follow Up Sent');
     } else if (
       tags.includes('3rd Follow Up Sent') &&
       !tags.includes('4th Follow Up Sent') &&
       minutesSince >= FOURTH_FU_DELAY_MINUTES
     ) {
-      sendFourthFollowUpForRow(email, first);
+      sendFourthFollowUpForRow(row, email, first);
       tags.push('4th Follow Up Sent');
-    } else if (
-      tags.includes('4th Follow Up Sent') &&
-      !tags.includes('Moved to DM') &&
-      minutesSince >= FOURTH_FU_DELAY_MINUTES
-    ) {
-      setReplyStatusWithLink_(
-        replyCell,
-        'Moved to DM',
-        thread.getId(),
-        MOVED_TO_DM_COLOR,
-      );
-      tags.push('Moved to DM');
     }
 
     const newStatus = tags.join(', ');
