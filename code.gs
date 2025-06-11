@@ -36,17 +36,7 @@ function onEditTrigger(e) {
   if (!sh || e.range.getSheet().getName() !== TARGET_SHEET_NAME) return;
   const hdrs = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
 
-  // 1) Find Status column
-  const statusCol = hdrs.indexOf('Status') + 1;
-  if (statusCol < 1 || e.range.getColumn() !== statusCol) return;
-
-  // 2) Grab the new & old values
-  const newStatus = e.value    || '';
-  const oldStatus = e.oldValue || '';
-
-  // 3) Compute which tags were just added
-  const newTags = newStatus.split(',').map(t => t.trim()).filter(Boolean);
-  const oldTags = oldStatus.split(',').map(t => t.trim()).filter(Boolean);
+@@ -55,278 +50,298 @@ function onEditTrigger(e) {
   const additions = newTags.filter(t => !oldTags.includes(t));
   if (!additions.length) return;
   Logger.log('Tags added: %s', additions.join(', '));
@@ -112,6 +102,7 @@ function sendInitialForRow(row, email, firstName) {
   const sent = Gmail.Users.Messages.send({ raw: raw }, 'me');
 
   setEmailLinkForRow_(row, sent.threadId);
+  setThreadIdForRow_(row, sent.threadId);
   setStageForRow_(row, 'Outreach');
 
   Logger.log('Outreach sent via Advanced API to %s with subject "%s"', email, subject);
@@ -286,7 +277,7 @@ function sendThirdFollowUpForRow(row, email, firstName) {
 }
 
 /**
- * 5) Fourth (Final) Follow‑Up: graceful close‑out 10–12 days later.
+ * 5) Fourth (Final) Follow‑Up: graceful close‑out 10–12 days later.
  */
 function sendFourthFollowUpForRow(row, email, firstName) {
   Logger.log('▶ Enter sendFourthFollowUpForRow; email=%s, firstName=%s', email, firstName);
@@ -344,16 +335,7 @@ function buildRawMessage_(to, subject, textBody, htmlBody, inReplyTo) {
   headers +=
     `MIME-Version: 1.0` + nl +
     `Content-Type: multipart/alternative; boundary="${boundary}"` + nl + nl;
-
-  const body =
-    `--${boundary}` + nl +
-    `Content-Type: text/plain; charset="UTF-8"` + nl + nl +
-    textBody + nl + nl +
-    `--${boundary}` + nl +
-    `Content-Type: text/html; charset="UTF-8"` + nl + nl +
-    htmlBody + nl + nl +
-    `--${boundary}--`;
-
+@@ -343,205 +358,173 @@ function buildRawMessage_(to, subject, textBody, htmlBody, inReplyTo) {
   const msg = headers + body;
   return Utilities.base64EncodeWebSafe(msg);
 }
@@ -414,6 +396,22 @@ function setEmailLinkForRow_(row, threadId) {
     .setLinkUrl(GMAIL_THREAD_LINK_PREFIX + threadId)
     .build();
   sh.getRange(row, linkCol).setRichTextValue(rich);
+}
+
+/**
+ * Record the Gmail thread ID for a row.
+ *
+ * @param {number} row      Row number in the sheet.
+ * @param {string} threadId Gmail thread ID.
+ */
+function setThreadIdForRow_(row, threadId) {
+  const ss   = SpreadsheetApp.getActiveSpreadsheet();
+  const sh   = ss.getSheetByName(TARGET_SHEET_NAME);
+  if (!sh) return;
+  const hdrs = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+  const idCol = hdrs.indexOf('Thread ID') + 1;
+  if (idCol < 1) return;
+  sh.getRange(row, idCol).setValue(threadId);
 }
 
 /**
