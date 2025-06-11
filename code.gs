@@ -3,11 +3,6 @@
  * explicit reply‑status columns are obsolete—the script now checks
  * for replies via Gmail search before sending the next follow‑up.
  */
-diff --git a/code.gs b/code.gs
-index 2fd5630f2a26e47156e9a33c0a9cf0cf612b0ae9..db07bb9503719f296da1a6d68031842d20d239b1 100644
---- a/code.gs
-+++ b/code.gs
-@@ -1,50 +1,41 @@
  /**
   * The exact subject for Outreach and for thread-matching in all helpers.
   */
