@@ -1,4 +1,5 @@
 # Kalm Follow-Up Automation
+
  
  This repository contains a Google Apps Script project that automates Gmail outreach and follow‑up emails driven from a Google Sheet.
  
@@ -36,15 +37,17 @@
  
  ## Basic Usage
  
-1. In your spreadsheet create columns titled **First Name**, **Last Name**, **Email**, **Status**, **Stage**, and optionally **Thread Link**. The thread link column is filled automatically after the first outreach.
-2. Install an **On edit** trigger for the `onEditTrigger` function.
-3. Install a daily time‑driven trigger for `autoSendFollowUps` so unanswered threads continue to receive follow‑ups automatically.
-4. Add a row for each contact and update the **Status** cell with tags such as `Outreach`, `1st Follow Up`, etc. Editing the status will send the matching email template.
-Follow-up messages are only sent when the row still includes the `Outreach` tag; clearing it stops further emails.
-The first outreach email automatically enables auto-sending so subsequent follow-ups are queued without extra steps.
-5. Customize the template text and delay constants in `code.gs` as needed.
+
+1. In your spreadsheet create columns titled **First Name**, **Last Name**, **Email**, **Status**, **Stage**, and **Thread Link**.
+ 2. Install an **On edit** trigger for the `onEditTrigger` function.
+ 3. Install a daily time‑driven trigger for `autoSendFollowUps` so unanswered threads continue to receive follow‑ups automatically.
+ 4. Add a row for each contact and update the **Status** cell with tags such as `Outreach`, `1st Follow Up`, etc. Editing the status will send the matching email template.
+    Follow-up messages are only sent when the row still includes the `Outreach` tag; clearing it stops further emails.
+    The first outreach email automatically enables auto-sending so subsequent follow-ups are queued without extra steps.
+ 5. Customize the template text and delay constants in `code.gs` as needed.
 6. Each run examines the most recent message in every thread. If the contact wrote last the **Reply Status** cell shows `New Response` in red. Once you respond it changes to `Replied`; otherwise it reads `Waiting`. The status text always links back to the Gmail thread and is refreshed even if you clear the cell. After the final follow‑up the script marks `Moved to DM`.
-7. The follow-up routine uses the stored **Thread ID** to open each conversation. If the thread cannot be retrieved by ID that contact is skipped.
+7. A link to each Gmail thread is stored after the first outreach for quick reference.
+
  
  With the Gmail service enabled and triggers installed, the script manages your outreach and follow‑ups directly from Gmail while updating status information in your spreadsheet.
  

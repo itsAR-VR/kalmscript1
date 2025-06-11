@@ -8,6 +8,9 @@
  */
 const OUTREACH_SUBJECT = `Hey We'd love to send you some product! // kalm wellness`;
 
+// Header used to store the Gmail thread link after the first outreach email
+const THREAD_LINK_HEADER = 'Thread Link';
+
 // Name of the sheet containing outreach contacts
 const TARGET_SHEET_NAME = 'Influencer PR';
 
@@ -73,6 +76,7 @@ function onEditTrigger(e) {
   if (!sh || e.range.getSheet().getName() !== TARGET_SHEET_NAME) return;
   const hdrs = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
   const stageCol  = hdrs.indexOf('Stage') + 1;
+  const threadLinkCol = hdrs.indexOf(THREAD_LINK_HEADER) + 1;
 
   // 1) Find Status column
   const statusCol = hdrs.indexOf('Status') + 1;
@@ -115,7 +119,7 @@ function onEditTrigger(e) {
     switch (tag) {
       case 'Outreach':
         Logger.log('Dispatching Outreach for %s', email);
-        sendInitialForRow(email, first, row);
+        sendInitialForRow(email, first, row, threadLinkCol);
         setAutoSendEnabled(true);
         if (stageCol > 0) {
           sh.getRange(row, stageCol).setValue('Outreach');
@@ -160,7 +164,7 @@ function onEditTrigger(e) {
 /**
  * 1) Outreach: one-off sendEmail using OutreachTemplate.html
  */
-function sendInitialForRow(email, firstName, rowIndex) {
+function sendInitialForRow(email, firstName, rowIndex, threadLinkCol) {
   const subject  = OUTREACH_SUBJECT;
   const tpl      = HtmlService.createTemplateFromFile('OutreachTemplate');
   tpl.firstName  = firstName;
@@ -170,7 +174,14 @@ function sendInitialForRow(email, firstName, rowIndex) {
   const raw = buildRawMessage_(email, subject, textBody, htmlBody);
   const response = Gmail.Users.Messages.send({ raw: raw }, 'me');
 
-  // Thread IDs are no longer stored in the sheet.
+  // Store a Gmail thread link for reference if the column exists
+  if (threadLinkCol > 0 && rowIndex > 0 && response.threadId) {
+    const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TARGET_SHEET_NAME);
+    if (sh) {
+      const link = `https://mail.google.com/mail/u/0/#inbox/${response.threadId}`;
+      sh.getRange(rowIndex, threadLinkCol).setValue(link);
+    }
+  }
 
   // Enable automatic follow-up sending once the first outreach goes out.
   setAutoSendEnabled(true);
@@ -190,6 +201,24 @@ function startOutreachForSelectedRow() {
   if (!sh || sh.getName() !== TARGET_SHEET_NAME) {
     SpreadsheetApp.getUi()
       .alert(`Please run this from the "${TARGET_SHEET_NAME}" sheet.`);
+    return;
+  }
+
+  const hdrs = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+  const firstNameCol = hdrs.indexOf('First Name') + 1;
+  const lastNameCol  = hdrs.indexOf('Last Name') + 1;
+  const emailCol     = hdrs.indexOf('Email') + 1;
+  const statusCol    = hdrs.indexOf('Status') + 1;
+  const stageCol     = hdrs.indexOf('Stage') + 1;
+  const threadLinkCol= hdrs.indexOf(THREAD_LINK_HEADER) + 1;
+  if (
+    firstNameCol < 1 ||
+    lastNameCol  < 1 ||
+    emailCol     < 1 ||
+    statusCol    < 1 ||
+    stageCol     < 1
+  ) {
+    SpreadsheetApp.getUi().alert('Headers required: First Name, Last Name, Email, Status, Stage');
     return;
   }
 
@@ -219,10 +248,10 @@ function startOutreachForSelectedRow() {
   const last  = (vals[lastNameCol - 1]  || '').toString();
   const email = vals[emailCol - 1];
 
-  if (!email) return;
-  if (!first && !last) return;
+  if (!email || (!first && !last)) return;
 
-  sendInitialForRow(email, first, row);
+  sendInitialForRow(email, first, row, threadLinkCol);
+
 
   if (stageCol > 0) {
     sh.getRange(row, stageCol).setValue('Outreach');
