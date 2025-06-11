@@ -224,14 +224,34 @@ function startOutreachForSelectedRow() {
 
   const range = sh.getActiveRange();
   if (!range) return;
-  const row   = range.getRow();
+  const row = range.getRow();
+
+  const hdrs = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+  const firstNameCol = hdrs.indexOf('First Name') + 1;
+  const lastNameCol  = hdrs.indexOf('Last Name') + 1;
+  const emailCol     = hdrs.indexOf('Email') + 1;
+  const statusCol    = hdrs.indexOf('Status') + 1;
+  const stageCol     = hdrs.indexOf('Stage') + 1;
+
+  if (
+    firstNameCol < 1 ||
+    lastNameCol < 1 ||
+    emailCol < 1 ||
+    statusCol < 1 ||
+    stageCol < 1
+  ) {
+    throw new Error('Headers required: First Name, Last Name, Email, Status, Stage');
+  }
+
   const vals  = sh.getRange(row, 1, 1, sh.getLastColumn()).getValues()[0];
   const first = (vals[firstNameCol - 1] || '').toString();
   const last  = (vals[lastNameCol - 1]  || '').toString();
   const email = vals[emailCol - 1];
+
   if (!email || (!first && !last)) return;
 
   sendInitialForRow(email, first, row, threadLinkCol);
+
 
   if (stageCol > 0) {
     sh.getRange(row, stageCol).setValue('Outreach');

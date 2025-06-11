@@ -1,4 +1,5 @@
- # Kalm Follow-Up Automation
+# Kalm Follow-Up Automation
+
  
  This repository contains a Google Apps Script project that automates Gmail outreach and follow‑up emails driven from a Google Sheet.
  
@@ -21,9 +22,8 @@
  The `FROM_ADDRESS` constant controls which Gmail address the script uses to send messages. Set it to the single account that will manage your outreach. The script checks incoming replies on this same address to stop follow‑ups automatically.
  Any "Send mail as" aliases configured in Gmail are detected automatically, so replies to those addresses are also recognized.
  
-`NEW_RESPONSE_COLOR` sets the background color applied to the **Reply Status** cell when a contact replies. The default is `red` but you can change it to any valid Sheets color name or hex value.
-
- `AutoSendEnabled` is a script property that controls whether follow-ups are sent
+- `NEW_RESPONSE_COLOR` sets the background color applied to the **Reply Status** cell when a contact replies. The default is `red` but you can change it to any valid Sheets color name or hex value.
+- `AutoSendEnabled` is a script property that controls whether follow-ups are sent
  automatically. The property is set to `TRUE` the first time an outreach email is
  sent so follow-ups start immediately. You can disable auto-sending anytime from
  **Project Settings → Script properties** by setting `AutoSendEnabled` to
@@ -37,6 +37,7 @@
  
  ## Basic Usage
  
+
 1. In your spreadsheet create columns titled **First Name**, **Last Name**, **Email**, **Status**, **Stage**, and **Thread Link**.
  2. Install an **On edit** trigger for the `onEditTrigger` function.
  3. Install a daily time‑driven trigger for `autoSendFollowUps` so unanswered threads continue to receive follow‑ups automatically.
@@ -46,6 +47,7 @@
  5. Customize the template text and delay constants in `code.gs` as needed.
 6. Each run examines the most recent message in every thread. If the contact wrote last the **Reply Status** cell shows `New Response` in red. Once you respond it changes to `Replied`; otherwise it reads `Waiting`. The status text always links back to the Gmail thread and is refreshed even if you clear the cell. After the final follow‑up the script marks `Moved to DM`.
 7. A link to each Gmail thread is stored after the first outreach for quick reference.
+
  
  With the Gmail service enabled and triggers installed, the script manages your outreach and follow‑ups directly from Gmail while updating status information in your spreadsheet.
  
