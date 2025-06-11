@@ -36,7 +36,17 @@ function onEditTrigger(e) {
   if (!sh || e.range.getSheet().getName() !== TARGET_SHEET_NAME) return;
   const hdrs = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
 
-@@ -55,278 +50,298 @@ function onEditTrigger(e) {
+  // 1) Find Status column
+  const statusCol = hdrs.indexOf('Status') + 1;
+  if (statusCol < 1 || e.range.getColumn() !== statusCol) return;
+
+  // 2) Grab the new & old values
+  const newStatus = e.value    || '';
+  const oldStatus = e.oldValue || '';
+
+  // 3) Compute which tags were just added
+  const newTags = newStatus.split(',').map(t => t.trim()).filter(Boolean);
+  const oldTags = oldStatus.split(',').map(t => t.trim()).filter(Boolean);
   const additions = newTags.filter(t => !oldTags.includes(t));
   if (!additions.length) return;
   Logger.log('Tags added: %s', additions.join(', '));
@@ -98,12 +108,14 @@ function sendInitialForRow(row, email, firstName) {
   const htmlBody = tpl.evaluate().getContent();
   const textBody = `Hi ${firstName},\n\nThanks for connecting—here’s the info we discussed.\n\nBest,\nKam Ordonez`;
 
+  setStageForRow_(row, 'Outreach');
+  SpreadsheetApp.flush();
+
   const raw = buildRawMessage_(email, subject, textBody, htmlBody);
   const sent = Gmail.Users.Messages.send({ raw: raw }, 'me');
 
   setEmailLinkForRow_(row, sent.threadId);
   setThreadIdForRow_(row, sent.threadId);
-  setStageForRow_(row, 'Outreach');
 
   Logger.log('Outreach sent via Advanced API to %s with subject "%s"', email, subject);
 }
@@ -194,11 +206,13 @@ function sendFirstFollowUpForRow(row, email, firstName) {
   const textBody = `Hi ${firstName},\n\nJust checking in—any questions?\n\nBest,\nKam Ordonez`;
 
   // Build raw RFC-2822 reply
+  setStageForRow_(row, '1st Follow Up');
+  SpreadsheetApp.flush();
+
   const raw = buildRawMessage_(email, `Re: ${subject}`, textBody, htmlBody, inReplyTo);
   const sent = Gmail.Users.Messages.send({ threadId: thread.getId(), raw: raw }, 'me');
 
   setEmailLinkForRow_(row, thread.getId());
-  setStageForRow_(row, '1st Follow Up');
 
   Logger.log('✅ 1st FU sent via Advanced API to %s in thread %s', email, thread.getId());
 }
@@ -233,11 +247,13 @@ function sendSecondFollowUpForRow(row, email, firstName) {
   const textBody = `Hi ${firstName},\n\nJust checking-in let me know if you need anything else!\n\nBest,\nKam Ordonez`;
 
   // Build and send raw reply
+  setStageForRow_(row, '2nd Follow Up');
+  SpreadsheetApp.flush();
+
   const raw = buildRawMessage_(email, `Re: ${subject}`, textBody, htmlBody, inReplyTo);
   const sent = Gmail.Users.Messages.send({ threadId: thread.getId(), raw: raw }, 'me');
 
   setEmailLinkForRow_(row, thread.getId());
-  setStageForRow_(row, '2nd Follow Up');
 
   Logger.log('✅ 2nd FU sent via Advanced API to %s in thread %s', email, thread.getId());
 }
@@ -267,11 +283,13 @@ function sendThirdFollowUpForRow(row, email, firstName) {
   const htmlBody = tpl.evaluate().getContent();
   const textBody = `Hi ${firstName},\n\nQuick nudge—your complimentary Kalm mouth‑tape pack is still reserved for you. Just reply with your address and I’ll ship it right away!\n\nWarmly,\nKam Ordonez`;
 
+  setStageForRow_(row, '3rd Follow Up');
+  SpreadsheetApp.flush();
+
   const raw = buildRawMessage_(email, `Re: ${subject}`, textBody, htmlBody, inReplyTo);
   const sent = Gmail.Users.Messages.send({ threadId: thread.getId(), raw: raw }, 'me');
 
   setEmailLinkForRow_(row, thread.getId());
-  setStageForRow_(row, '3rd Follow Up');
 
   Logger.log('✅ 3rd FU sent via Advanced API to %s in thread %s', email, thread.getId());
 }
@@ -304,11 +322,13 @@ function sendFourthFollowUpForRow(row, email, firstName) {
   const htmlBody = tpl.evaluate().getContent();
   const textBody = `Hi ${firstName},\n\nThis is my last check‑in for now. If calmer, clearer sleep isn’t on your radar yet, no worries—just reply “later”. Otherwise, send your address anytime and I’ll pop your free sample in the mail.\n\nFind your Kalm,\nKam Ordonez`;
 
+  setStageForRow_(row, '4th Follow Up');
+  SpreadsheetApp.flush();
+
   const raw = buildRawMessage_(email, `Re: ${subject}`, textBody, htmlBody, inReplyTo);
   const sent = Gmail.Users.Messages.send({ threadId: thread.getId(), raw: raw }, 'me');
 
   setEmailLinkForRow_(row, thread.getId());
-  setStageForRow_(row, '4th Follow Up');
 
   Logger.log('✅ 4th FU sent via Advanced API to %s in thread %s', email, thread.getId());
 }
@@ -335,7 +355,16 @@ function buildRawMessage_(to, subject, textBody, htmlBody, inReplyTo) {
   headers +=
     `MIME-Version: 1.0` + nl +
     `Content-Type: multipart/alternative; boundary="${boundary}"` + nl + nl;
-@@ -343,205 +358,173 @@ function buildRawMessage_(to, subject, textBody, htmlBody, inReplyTo) {
+
+  const body =
+    `--${boundary}` + nl +
+    `Content-Type: text/plain; charset="UTF-8"` + nl + nl +
+    textBody + nl + nl +
+    `--${boundary}` + nl +
+    `Content-Type: text/html; charset="UTF-8"` + nl + nl +
+    htmlBody + nl + nl +
+    `--${boundary}--`;
+
   const msg = headers + body;
   return Utilities.base64EncodeWebSafe(msg);
 }
@@ -444,13 +473,15 @@ function autoSendFollowUps() {
   const lastNameCol  = hdrs.indexOf('Last Name') + 1;
   const emailCol     = hdrs.indexOf('Email') + 1;
   const statusCol    = hdrs.indexOf('Status') + 1;
+  const stageCol     = hdrs.indexOf('Stage') + 1;
   if (
     firstNameCol < 1 ||
     lastNameCol < 1 ||
     emailCol < 1 ||
-    statusCol < 1
+    statusCol < 1 ||
+    stageCol < 1
   ) {
-    throw new Error('Headers required: First Name, Last Name, Email, Status');
+    throw new Error('Headers required: First Name, Last Name, Email, Status, Stage');
   }
 
   const numRows = sh.getLastRow() - 1;
@@ -466,6 +497,10 @@ function autoSendFollowUps() {
     let status   = vals[statusCol - 1] || '';
     const tags   = status.split(',').map(t => t.trim()).filter(Boolean);
 
+    if (!tags.includes('Outreach')) return; // stop workflow if Outreach tag removed
+
+    const stage  = (vals[stageCol - 1] || 'Outreach').toString();
+
     // Search threads that include messages sent to or received from the contact
     const query   =
       `in:anywhere (to:${email} OR from:${email}) subject:"${OUTREACH_SUBJECT}"`;
@@ -477,35 +512,14 @@ function autoSendFollowUps() {
     const lastMsg  = thread.getMessages().pop();
     const minutesSince = (Date.now() - lastMsg.getDate().getTime()) / 60000;
 
-    if (!tags.includes('1st Follow Up Sent') && minutesSince >= FIRST_FU_DELAY_MINUTES) {
+    if (stage === 'Outreach' && minutesSince >= FIRST_FU_DELAY_MINUTES) {
       sendFirstFollowUpForRow(row, email, first);
-      tags.push('1st Follow Up Sent');
-    } else if (
-      tags.includes('1st Follow Up Sent') &&
-      !tags.includes('2nd Follow Up Sent') &&
-      minutesSince >= SECOND_FU_DELAY_MINUTES
-    ) {
+    } else if (stage === '1st Follow Up' && minutesSince >= SECOND_FU_DELAY_MINUTES) {
       sendSecondFollowUpForRow(row, email, first);
-      tags.push('2nd Follow Up Sent');
-    } else if (
-      tags.includes('2nd Follow Up Sent') &&
-      !tags.includes('3rd Follow Up Sent') &&
-      minutesSince >= THIRD_FU_DELAY_MINUTES
-    ) {
+    } else if (stage === '2nd Follow Up' && minutesSince >= THIRD_FU_DELAY_MINUTES) {
       sendThirdFollowUpForRow(row, email, first);
-      tags.push('3rd Follow Up Sent');
-    } else if (
-      tags.includes('3rd Follow Up Sent') &&
-      !tags.includes('4th Follow Up Sent') &&
-      minutesSince >= FOURTH_FU_DELAY_MINUTES
-    ) {
+    } else if (stage === '3rd Follow Up' && minutesSince >= FOURTH_FU_DELAY_MINUTES) {
       sendFourthFollowUpForRow(row, email, first);
-      tags.push('4th Follow Up Sent');
-    }
-
-    const newStatus = tags.join(', ');
-    if (newStatus !== status) {
-      sh.getRange(row, statusCol).setValue(newStatus);
     }
   });
 }
