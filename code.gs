@@ -603,8 +603,6 @@ function autoSendFollowUps() {
     Logger.log('Auto-send disabled; skipping run.');
     return;
   }
-
-  if (!isAutoSendEnabled()) return;
   const myAddrs = getMyAddresses_();
   const ss   = SpreadsheetApp.getActiveSpreadsheet();
   const sh   = ss.getSheetByName(TARGET_SHEET_NAME);
