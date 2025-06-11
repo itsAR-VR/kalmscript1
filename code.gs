@@ -53,11 +53,7 @@
   *
   * @return {boolean} TRUE if enabled, otherwise FALSE.
   */
-diff --git a/code.gs b/code.gs
-index 2fd5630f2a26e47156e9a33c0a9cf0cf612b0ae9..db07bb9503719f296da1a6d68031842d20d239b1 100644
---- a/code.gs
-+++ b/code.gs
-@@ -55,161 +46,148 @@ function isAutoSendEnabled() {
+ function isAutoSendEnabled() {
  }
  
  /**
@@ -226,11 +222,7 @@ index 2fd5630f2a26e47156e9a33c0a9cf0cf612b0ae9..db07bb9503719f296da1a6d68031842d
    const range = sh.getActiveRange();
    if (!range) return;
    const row = range.getRow();
-diff --git a/code.gs b/code.gs
-index 2fd5630f2a26e47156e9a33c0a9cf0cf612b0ae9..db07bb9503719f296da1a6d68031842d20d239b1 100644
---- a/code.gs
-+++ b/code.gs
-@@ -245,206 +223,173 @@ function startOutreachForSelectedRow() {
+ function startOutreachForSelectedRow() {
    sendInitialForRow(email, first, row);
  
    if (stageCol > 0) {
@@ -449,11 +441,7 @@ index 2fd5630f2a26e47156e9a33c0a9cf0cf612b0ae9..db07bb9503719f296da1a6d68031842d
    Logger.log('✅ 4th FU sent via Advanced API to %s in thread %s', email, thread.getId());
  }
  
-diff --git a/code.gs b/code.gs
-index 2fd5630f2a26e47156e9a33c0a9cf0cf612b0ae9..db07bb9503719f296da1a6d68031842d20d239b1 100644
---- a/code.gs
-+++ b/code.gs
-@@ -500,225 +445,187 @@ function extractEmail_(from) {
+function extractEmail_(from) {
   *
   * @return {string[]} Lowercase addresses that belong to the account.
   */
