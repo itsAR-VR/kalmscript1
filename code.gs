@@ -570,7 +570,7 @@ function setReplyStatusWithLink_(cell, text, threadId, color) {
 /**
  * Automatically send follow-up emails if contacts haven't replied.
  * Requires a stored Thread ID for each contact and skips any that are missing.
- * Intended to run daily via a time-based Apps Script trigger.
+ * Intended to run hourly via a time-based Apps Script trigger (`.everyHours(1)`).
  */
 function autoSendFollowUps() {
   if (!isAutoSendEnabled()) {

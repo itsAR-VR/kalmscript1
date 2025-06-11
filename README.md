@@ -12,7 +12,7 @@ The script sends an initial outreach email and up to four follow‑up messages. 
 2. Replace the default `Code.gs` with `code.gs` from this repository and create HTML templates from each `*.html` file.
 3. In the Apps Script editor open **Extensions → Advanced Google services** and enable **Gmail API**, then follow the link to the Google Cloud console to enable it there as well.
 4. Set the `FROM_ADDRESS` constant in `code.gs` to the Gmail address that will send your outreach messages.
-5. Install an **On edit** trigger for `onEditTrigger` and a time‑driven trigger for `autoSendFollowUps`.
+5. Install an **On edit** trigger for `onEditTrigger` and an hourly time‑driven trigger for `autoSendFollowUps` using `.everyHours(1)`.
 6. Add a drawing or button in the sheet and assign the `startOutreachForSelectedRow` function to send outreach for the active row.
 7. Save and authorize the script when prompted.
 
@@ -32,7 +32,7 @@ sent so follow-ups start immediately. You can disable auto-sending anytime from
 sheet button.
 
 Toggling this value only stops follow-ups logically. The time-driven trigger
-continues to invoke `autoSendFollowUps`, which consumes an execution each day.
+continues to invoke `autoSendFollowUps`, which consumes an execution each hour.
 Delete the trigger entirely if you need to pause scheduled runs.
 
 ## Basic Usage
@@ -40,7 +40,7 @@ Delete the trigger entirely if you need to pause scheduled runs.
 1. In your spreadsheet create columns titled **First Name**, **Last Name**, **Email**, **Status**, **Stage**, **Reply Status**, and **Thread ID**.
    The thread ID column will be populated automatically after the first outreach and is required for all follow‑ups.
 2. Install an **On edit** trigger for the `onEditTrigger` function.
-3. Install a daily time‑driven trigger for `autoSendFollowUps` so unanswered threads continue to receive follow‑ups automatically.
+3. Install an hourly time‑driven trigger for `autoSendFollowUps` using `.everyHours(1)` so unanswered threads continue to receive follow‑ups automatically.
 4. Add a row for each contact and update the **Status** cell with tags such as `Outreach`, `1st Follow Up`, etc. Editing the status will send the matching email template.
    Follow-up messages are only sent when the row still includes the `Outreach` tag; clearing it stops further emails.
    The first outreach email automatically enables auto-sending so subsequent follow-ups are queued without extra steps.
