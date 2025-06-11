@@ -1,4 +1,9 @@
 /**
+ * Outreach emails and follow‑ups run once per hour. Thread IDs and
+ * explicit reply‑status columns are obsolete—the script now checks
+ * for replies via Gmail search before sending the next follow‑up.
+ */
+/**
  * The exact subject for Outreach and for thread-matching in all helpers.
  */
 const OUTREACH_SUBJECT = `Hey We'd love to send you some product! // kalm wellness`;
