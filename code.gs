@@ -36,7 +36,17 @@ function onEditTrigger(e) {
   if (!sh || e.range.getSheet().getName() !== TARGET_SHEET_NAME) return;
   const hdrs = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
 
-@@ -55,278 +50,298 @@ function onEditTrigger(e) {
+  // 1) Find Status column
+  const statusCol = hdrs.indexOf('Status') + 1;
+  if (statusCol < 1 || e.range.getColumn() !== statusCol) return;
+
+  // 2) Grab the new & old values
+  const newStatus = e.value    || '';
+  const oldStatus = e.oldValue || '';
+
+  // 3) Compute which tags were just added
+  const newTags = newStatus.split(',').map(t => t.trim()).filter(Boolean);
+  const oldTags = oldStatus.split(',').map(t => t.trim()).filter(Boolean);
   const additions = newTags.filter(t => !oldTags.includes(t));
   if (!additions.length) return;
   Logger.log('Tags added: %s', additions.join(', '));
@@ -335,7 +345,16 @@ function buildRawMessage_(to, subject, textBody, htmlBody, inReplyTo) {
   headers +=
     `MIME-Version: 1.0` + nl +
     `Content-Type: multipart/alternative; boundary="${boundary}"` + nl + nl;
-@@ -343,205 +358,173 @@ function buildRawMessage_(to, subject, textBody, htmlBody, inReplyTo) {
+
+  const body =
+    `--${boundary}` + nl +
+    `Content-Type: text/plain; charset="UTF-8"` + nl + nl +
+    textBody + nl + nl +
+    `--${boundary}` + nl +
+    `Content-Type: text/html; charset="UTF-8"` + nl + nl +
+    htmlBody + nl + nl +
+    `--${boundary}--`;
+
   const msg = headers + body;
   return Utilities.base64EncodeWebSafe(msg);
 }
