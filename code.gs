@@ -169,10 +169,15 @@ function sendInitialForRow(email, firstName, rowIndex) {
     const ss   = SpreadsheetApp.getActiveSpreadsheet();
     const sh   = ss.getSheetByName(TARGET_SHEET_NAME);
     if (sh) {
-      const hdrs = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
-      const col  = hdrs.indexOf('Thread ID') + 1;
-      if (col > 0) {
-        sh.getRange(rowIndex, col).setValue(response.threadId);
+      const hdrs      = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+      const threadCol = hdrs.indexOf('Thread ID') + 1;
+      const linkCol   = hdrs.indexOf('Email Link') + 1;
+      if (threadCol > 0) {
+        sh.getRange(rowIndex, threadCol).setValue(response.threadId);
+      }
+      if (linkCol > 0) {
+        const url = 'https://mail.google.com/mail/u/0/#inbox/' + response.threadId;
+        sh.getRange(rowIndex, linkCol).setValue(url);
       }
     }
   }

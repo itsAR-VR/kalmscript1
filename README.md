@@ -47,7 +47,8 @@
  5. Customize the template text and delay constants in `code.gs` as needed.
 6. Each run checks the time since the last message in every thread and sends the next follow‑up when due.
    The **Stage** column records which template was sent and is updated before each email is delivered.
-   The **Email Link** column stores a link to the Gmail thread.
+   The **Email Link** column automatically stores a link to the Gmail thread
+   when the initial outreach email is sent.
 
  
  With the Gmail service enabled and triggers installed, the script manages your outreach and follow‑ups directly from Gmail while updating status information in your spreadsheet.
