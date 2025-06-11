@@ -175,7 +175,7 @@ function sendInitialForRow(email, firstName, rowIndex) {
   const textBody = `Hi ${firstName},\n\nThanks for connecting—here’s the info we discussed.\n\nBest,\nKam Ordonez`;
 
   const raw = buildRawMessage_(email, subject, textBody, htmlBody);
-  const response = Gmail.Users.Messages.send({ raw: raw }, 'me');
+  const response = sendWithRetry_({ raw: raw });
 
   if (rowIndex) {
     const ss   = SpreadsheetApp.getActiveSpreadsheet();
@@ -306,7 +306,7 @@ function sendFirstFollowUpForRow(email, firstName, threadId) {
 
   // Build raw RFC-2822 reply
   const raw = buildRawMessage_(email, `Re: ${subject}`, textBody, htmlBody, inReplyTo);
-  Gmail.Users.Messages.send({ threadId: thread.getId(), raw: raw }, 'me');
+  sendWithRetry_({ threadId: thread.getId(), raw: raw });
   Logger.log('✅ 1st FU sent via Advanced API to %s in thread %s', email, thread.getId());
 }
 
@@ -353,7 +353,7 @@ function sendSecondFollowUpForRow(email, firstName, threadId) {
 
   // Build and send raw reply
   const raw = buildRawMessage_(email, `Re: ${subject}`, textBody, htmlBody, inReplyTo);
-  Gmail.Users.Messages.send({ threadId: thread.getId(), raw: raw }, 'me');
+  sendWithRetry_({ threadId: thread.getId(), raw: raw });
   Logger.log('✅ 2nd FU sent via Advanced API to %s in thread %s', email, thread.getId());
 }
 
@@ -400,7 +400,7 @@ function sendThirdFollowUpForRow(email, firstName, threadId) {
   const textBody = `Hi ${firstName},\n\nQuick nudge—your complimentary Kalm mouth‑tape pack is still reserved for you. Just reply with your address and I’ll ship it right away!\n\nWarmly,\nKam Ordonez`;
 
   const raw = buildRawMessage_(email, `Re: ${subject}`, textBody, htmlBody, inReplyTo);
-  Gmail.Users.Messages.send({ threadId: thread.getId(), raw: raw }, 'me');
+  sendWithRetry_({ threadId: thread.getId(), raw: raw });
   Logger.log('✅ 3rd FU sent via Advanced API to %s in thread %s', email, thread.getId());
 }
 
@@ -444,7 +444,7 @@ function sendFourthFollowUpForRow(email, firstName, threadId) {
   const textBody = `Hi ${firstName},\n\nThis is my last check‑in for now. If calmer, clearer sleep isn’t on your radar yet, no worries—just reply “later”. Otherwise, send your address anytime and I’ll pop your free sample in the mail.\n\nFind your Kalm,\nKam Ordonez`;
 
   const raw = buildRawMessage_(email, `Re: ${subject}`, textBody, htmlBody, inReplyTo);
-  Gmail.Users.Messages.send({ threadId: thread.getId(), raw: raw }, 'me');
+  sendWithRetry_({ threadId: thread.getId(), raw: raw });
   Logger.log('✅ 4th FU sent via Advanced API to %s in thread %s', email, thread.getId());
 }
 
@@ -482,6 +482,32 @@ function buildRawMessage_(to, subject, textBody, htmlBody, inReplyTo) {
 
   const msg = headers + body;
   return Utilities.base64EncodeWebSafe(msg);
+}
+
+/**
+ * Helper: send a message via the Gmail API with retries on rate limit
+ * or server errors.
+ *
+ * @param {object} payload      Payload for `Gmail.Users.Messages.send`.
+ * @param {number} [maxAttempts=5]  Maximum attempts to try.
+ * @return {object} API response from Gmail.
+ */
+function sendWithRetry_(payload, maxAttempts) {
+  maxAttempts = maxAttempts || 5;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      return Gmail.Users.Messages.send(payload, 'me');
+    } catch (err) {
+      const msg = err && err.message ? err.message : '';
+      const match = msg.match(/returned code (\d+)/);
+      const code = match ? parseInt(match[1], 10) : NaN;
+      if (attempt < maxAttempts - 1 && (code === 429 || (code >= 500 && code < 600))) {
+        Utilities.sleep(Math.pow(2, attempt) * 1000);
+        continue;
+      }
+      throw err;
+    }
+  }
 }
 
 /**
