@@ -20,8 +20,11 @@ const MOVED_TO_DM_COLOR = '#d9d9d9';
 // Script property key used to control automatic sending of follow-ups.
 const AUTO_SEND_ENABLED_PROP = 'AutoSendEnabled';
 
-// Prefix used to build links back to Gmail threads in the Reply Status column.
-const GMAIL_THREAD_LINK_PREFIX = 'https://mail.google.com/mail/u/0/#inbox/';
+// Name of the column that stores all sent Message-IDs for a contact.
+const MESSAGE_IDS_COLUMN = 'Message IDs';
+
+// Number of days to look back when checking for previously sent messages.
+const FOLLOWUP_LOOKBACK_DAYS = 30;
 
 // Number of minutes to wait before each follow-up email is sent.
 // These were previously day-based delays.  For production, keep the
@@ -77,7 +80,7 @@ function onEditTrigger(e) {
   if (!sh || e.range.getSheet().getName() !== TARGET_SHEET_NAME) return;
   const hdrs = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
   const stageCol  = hdrs.indexOf('Stage') + 1;
-  const threadCol = hdrs.indexOf('Thread ID') + 1;
+  const messageCol = hdrs.indexOf(MESSAGE_IDS_COLUMN) + 1;
 
   // 1) Find Status column
   const statusCol = hdrs.indexOf('Status') + 1;
@@ -102,9 +105,9 @@ function onEditTrigger(e) {
   const firstNameCol = hdrs.indexOf('First Name') + 1;
   const lastNameCol  = hdrs.indexOf('Last Name') + 1;
   const emailCol     = hdrs.indexOf('Email') + 1;
-  const threadIdCol  = hdrs.indexOf('Thread ID') + 1;
-  if (firstNameCol < 1 || lastNameCol < 1 || emailCol < 1 || threadIdCol < 1) {
-    throw new Error('Headers required: First Name, Last Name, Email, Status, Thread ID');
+  const msgIdCol     = hdrs.indexOf(MESSAGE_IDS_COLUMN) + 1;
+  if (firstNameCol < 1 || lastNameCol < 1 || emailCol < 1 || msgIdCol < 1) {
+    throw new Error('Headers required: First Name, Last Name, Email, Status, ' + MESSAGE_IDS_COLUMN);
   }
 
   // 5) Read that row’s data
@@ -113,7 +116,7 @@ function onEditTrigger(e) {
   const first  = (vals[firstNameCol - 1] || '').toString();
   const last   = (vals[lastNameCol - 1]  || '').toString();
   const email  = vals[emailCol - 1];
-  const threadId = vals[threadIdCol - 1];
+  const msgIds = vals[msgIdCol - 1];
   if (!email) return;
   if (!first && !last) return;
 
@@ -130,28 +133,28 @@ function onEditTrigger(e) {
         break;
       case '1st Follow Up':
         Logger.log('Dispatching 1st Follow-Up for %s', email);
-        sendFirstFollowUpForRow(email, first, threadId);
+        sendFirstFollowUpForRow(email, first, msgIds);
         if (stageCol > 0) {
           sh.getRange(row, stageCol).setValue('Follow Up 1');
         }
         break;
       case '2nd Follow Up':
         Logger.log('Dispatching 2nd Follow-Up for %s', email);
-        sendSecondFollowUpForRow(email, first, threadId);
+        sendSecondFollowUpForRow(email, first, msgIds);
         if (stageCol > 0) {
           sh.getRange(row, stageCol).setValue('Follow Up 2');
         }
         break;
       case '3rd Follow Up':
         Logger.log('Dispatching 3rd Follow-Up for %s', email);
-        sendThirdFollowUpForRow(email, first, threadId);
+        sendThirdFollowUpForRow(email, first, msgIds);
         if (stageCol > 0) {
           sh.getRange(row, stageCol).setValue('Follow Up 3');
         }
         break;
       case '4th Follow Up':
         Logger.log('Dispatching 4th Follow-Up for %s', email);
-        sendFourthFollowUpForRow(email, first, threadId);
+        sendFourthFollowUpForRow(email, first, msgIds);
         if (stageCol > 0) {
           sh.getRange(row, stageCol).setValue('Follow Up 4');
         }
@@ -182,9 +185,9 @@ function sendInitialForRow(email, firstName, rowIndex) {
     const sh   = ss.getSheetByName(TARGET_SHEET_NAME);
     if (sh) {
       const hdrs = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
-      const threadCol = hdrs.indexOf('Thread ID') + 1;
-      if (threadCol > 0) {
-        sh.getRange(rowIndex, threadCol).setValue(response.threadId);
+      const msgCol = hdrs.indexOf(MESSAGE_IDS_COLUMN) + 1;
+      if (msgCol > 0) {
+        sh.getRange(rowIndex, msgCol).setValue(response.id);
       }
     }
   }
@@ -264,188 +267,100 @@ function startOutreachForSelectedRow() {
 
 
 /**
- * 2) First Follow-Up: advanced threaded reply that sets To: explicitly.
- * Requires a valid Gmail thread ID for the contact.
+ * 2) First Follow-Up email.
  */
-function sendFirstFollowUpForRow(email, firstName, threadId) {
-  Logger.log('▶ Enter sendFirstFollowUpForRow; email=%s, firstName=%s, threadId=%s', email, firstName, threadId);
+function sendFirstFollowUpForRow(email, firstName, msgIds) {
+  Logger.log('▶ Enter sendFirstFollowUpForRow; email=%s, firstName=%s', email, firstName);
+
+  const ids = parseMessageIds_(msgIds);
+  if (!shouldSendFollowUp_(email, ids, FOLLOWUP_LOOKBACK_DAYS)) {
+    Logger.log('Existing follow-up found for %s; skipping.', email);
+    return null;
+  }
 
   const subject = OUTREACH_SUBJECT;
-  let thread = null;
-  if (threadId) {
-    try {
-      thread = GmailApp.getThreadById(threadId);
-    } catch (err) {
-      Logger.log('Failed to get thread by ID %s: %s', threadId, err);
-    }
-  }
-  if (!thread) {
-    Logger.log('Thread not found for %s; skipping first follow-up.', email);
-    Logger.log('Thread not found; aborting first follow-up.');
-    return;
-  }
-  if (thread.getMessageCount() === 0) {
 
-    Logger.log('Thread %s has no messages; skipping first follow-up for %s.', thread.getId(), email);
-    Logger.log('No messages in thread %s; skipping first follow-up.', thread.getId());
-    return;
-  }
-  const lastMsg  = thread.getMessages().pop();
-  const rawOrig  = lastMsg.getRawContent();
-  const inReplyTo= (rawOrig.match(/^Message-ID:\s*(<[^>]+>)/mi) || [])[1];
-  if (!inReplyTo) {
-    Logger.log('❌ No Message-ID header found; aborting.');
-    return;
-  }
-
-  // Render HTML & text
   const tpl      = HtmlService.createTemplateFromFile('FirstFollowUpTemplate');
   tpl.firstName  = firstName;
   const htmlBody = tpl.evaluate().getContent();
   const textBody = `Hi ${firstName},\n\nJust checking in—any questions?\n\nBest,\nKam Ordonez`;
 
-  // Build raw RFC-2822 reply
-  const raw = buildRawMessage_(email, `Re: ${subject}`, textBody, htmlBody, inReplyTo);
-  Gmail.Users.Messages.send({ threadId: thread.getId(), raw: raw }, 'me');
-  Logger.log('✅ 1st FU sent via Advanced API to %s in thread %s', email, thread.getId());
+  const raw = buildRawMessage_(email, `Re: ${subject}`, textBody, htmlBody);
+  const res = Gmail.Users.Messages.send({ raw: raw }, 'me');
+  Logger.log('✅ 1st FU sent via Advanced API to %s', email);
+  return res.id;
 }
 
 /**
- * 3) Second Follow-Up: same advanced send logic.
- * Requires a valid Gmail thread ID.
+ * 3) Second Follow-Up email.
  */
-function sendSecondFollowUpForRow(email, firstName, threadId) {
-  Logger.log('▶ Enter sendSecondFollowUpForRow; email=%s, firstName=%s, threadId=%s', email, firstName, threadId);
+function sendSecondFollowUpForRow(email, firstName, msgIds) {
+  Logger.log('▶ Enter sendSecondFollowUpForRow; email=%s, firstName=%s', email, firstName);
+
+  const ids = parseMessageIds_(msgIds);
+  if (!shouldSendFollowUp_(email, ids, FOLLOWUP_LOOKBACK_DAYS)) {
+    Logger.log('Existing follow-up found for %s; skipping.', email);
+    return null;
+  }
 
   const subject = OUTREACH_SUBJECT;
-  let thread = null;
-  if (threadId) {
-    try {
-      thread = GmailApp.getThreadById(threadId);
-    } catch (err) {
-      Logger.log('Failed to get thread by ID %s: %s', threadId, err);
-    }
-  }
-  if (!thread) {
-
-    Logger.log('Thread not found for %s; skipping second follow-up.', email);
-    Logger.log('Thread not found; aborting second follow-up.');
-    return;
-  }
-  if (thread.getMessageCount() === 0) {
-    Logger.log('Thread %s has no messages; skipping second follow-up for %s.', thread.getId(), email);
-    Logger.log('No messages in thread %s; skipping second follow-up.', thread.getId());
-    return;
-  }
-  const lastMsg  = thread.getMessages().pop();
-  const rawOrig  = lastMsg.getRawContent();
-  const inReplyTo= (rawOrig.match(/^Message-ID:\s*(<[^>]+>)/mi) || [])[1];
-  if (!inReplyTo) {
-    Logger.log('❌ No Message-ID header found; aborting.');
-    return;
-  }
-
-  // Render HTML & text
   const tpl      = HtmlService.createTemplateFromFile('SecondFollowUpTemplate');
   tpl.firstName  = firstName;
   const htmlBody = tpl.evaluate().getContent();
   const textBody = `Hi ${firstName},\n\nJust checking-in let me know if you need anything else!\n\nBest,\nKam Ordonez`;
 
-  // Build and send raw reply
-  const raw = buildRawMessage_(email, `Re: ${subject}`, textBody, htmlBody, inReplyTo);
-  Gmail.Users.Messages.send({ threadId: thread.getId(), raw: raw }, 'me');
-  Logger.log('✅ 2nd FU sent via Advanced API to %s in thread %s', email, thread.getId());
+  const raw = buildRawMessage_(email, `Re: ${subject}`, textBody, htmlBody);
+  const res = Gmail.Users.Messages.send({ raw: raw }, 'me');
+  Logger.log('✅ 2nd FU sent via Advanced API to %s', email);
+  return res.id;
 }
 
 /**
- * 4) Third Follow-Up.
- * Requires a valid Gmail thread ID.
+ * 4) Third Follow-Up email.
  */
-function sendThirdFollowUpForRow(email, firstName, threadId) {
-  Logger.log('▶ Enter sendThirdFollowUpForRow; email=%s, firstName=%s, threadId=%s', email, firstName, threadId);
+function sendThirdFollowUpForRow(email, firstName, msgIds) {
+  Logger.log('▶ Enter sendThirdFollowUpForRow; email=%s, firstName=%s', email, firstName);
+
+  const ids = parseMessageIds_(msgIds);
+  if (!shouldSendFollowUp_(email, ids, FOLLOWUP_LOOKBACK_DAYS)) {
+    Logger.log('Existing follow-up found for %s; skipping.', email);
+    return null;
+  }
 
   const subject = OUTREACH_SUBJECT;
-  let thread = null;
-  if (threadId) {
-    try {
-      thread = GmailApp.getThreadById(threadId);
-    } catch (err) {
-      Logger.log('Failed to get thread by ID %s: %s', threadId, err);
-    }
-  }
-  if (!thread) {
-    Logger.log('Thread not found for %s; skipping third follow-up.', email);
-    Logger.log('Thread not found; aborting third follow-up.');
-
-    return;
-  }
-  if (thread.getMessageCount() === 0) {
-    Logger.log('Thread %s has no messages; skipping third follow-up for %s.', thread.getId(), email);
-
-    Logger.log('No messages in thread %s; skipping third follow-up.', thread.getId());
-
-    return;
-  }
-  const lastMsg  = thread.getMessages().pop();
-  const rawOrig  = lastMsg.getRawContent();
-  const inReplyTo= (rawOrig.match(/^Message-ID:\s*(<[^>]+>)/mi) || [])[1];
-  if (!inReplyTo) {
-    Logger.log('❌ No Message-ID header found; aborting third follow-up.');
-    return;
-  }
-
   const tpl      = HtmlService.createTemplateFromFile('ThirdFollowUpTemplate');
   tpl.firstName  = firstName;
   const htmlBody = tpl.evaluate().getContent();
   const textBody = `Hi ${firstName},\n\nQuick nudge—your complimentary Kalm mouth‑tape pack is still reserved for you. Just reply with your address and I’ll ship it right away!\n\nWarmly,\nKam Ordonez`;
 
-  const raw = buildRawMessage_(email, `Re: ${subject}`, textBody, htmlBody, inReplyTo);
-  Gmail.Users.Messages.send({ threadId: thread.getId(), raw: raw }, 'me');
-  Logger.log('✅ 3rd FU sent via Advanced API to %s in thread %s', email, thread.getId());
+  const raw = buildRawMessage_(email, `Re: ${subject}`, textBody, htmlBody);
+  const res = Gmail.Users.Messages.send({ raw: raw }, 'me');
+  Logger.log('✅ 3rd FU sent via Advanced API to %s', email);
+  return res.id;
 }
 
 /**
- * 5) Fourth (Final) Follow‑Up: graceful close‑out 10–12 days later.
- * Requires a valid Gmail thread ID.
+ * 5) Fourth (Final) Follow‑Up: graceful close‑out.
  */
-function sendFourthFollowUpForRow(email, firstName, threadId) {
-  Logger.log('▶ Enter sendFourthFollowUpForRow; email=%s, firstName=%s, threadId=%s', email, firstName, threadId);
+function sendFourthFollowUpForRow(email, firstName, msgIds) {
+  Logger.log('▶ Enter sendFourthFollowUpForRow; email=%s, firstName=%s', email, firstName);
+
+  const ids = parseMessageIds_(msgIds);
+  if (!shouldSendFollowUp_(email, ids, FOLLOWUP_LOOKBACK_DAYS)) {
+    Logger.log('Existing follow-up found for %s; skipping.', email);
+    return null;
+  }
 
   const subject = OUTREACH_SUBJECT;
-  let thread = null;
-  if (threadId) {
-    try {
-      thread = GmailApp.getThreadById(threadId);
-    } catch (err) {
-      Logger.log('Failed to get thread by ID %s: %s', threadId, err);
-    }
-  }
-  if (!thread) {
-    Logger.log('Thread not found for %s; skipping fourth follow-up.', email);
-    Logger.log('Thread not found; aborting fourth follow-up.');
-    return;
-  }
-  if (thread.getMessageCount() === 0) {
-    Logger.log('Thread %s has no messages; skipping fourth follow-up for %s.', thread.getId(), email);
-    Logger.log('No messages in thread %s; skipping fourth follow-up.', thread.getId());
-    return;
-  }
-  const lastMsg  = thread.getMessages().pop();
-  const rawOrig  = lastMsg.getRawContent();
-  const inReplyTo= (rawOrig.match(/^Message-ID:\s*(<[^>]+>)/mi) || [])[1];
-  if (!inReplyTo) {
-    Logger.log('❌ No Message-ID header found; aborting fourth follow-up.');
-    return;
-  }
-
   const tpl      = HtmlService.createTemplateFromFile('FourthFollowUpTemplate');
   tpl.firstName  = firstName;
   const htmlBody = tpl.evaluate().getContent();
   const textBody = `Hi ${firstName},\n\nThis is my last check‑in for now. If calmer, clearer sleep isn’t on your radar yet, no worries—just reply “later”. Otherwise, send your address anytime and I’ll pop your free sample in the mail.\n\nFind your Kalm,\nKam Ordonez`;
 
-  const raw = buildRawMessage_(email, `Re: ${subject}`, textBody, htmlBody, inReplyTo);
-  Gmail.Users.Messages.send({ threadId: thread.getId(), raw: raw }, 'me');
-  Logger.log('✅ 4th FU sent via Advanced API to %s in thread %s', email, thread.getId());
+  const raw = buildRawMessage_(email, `Re: ${subject}`, textBody, htmlBody);
+  const res = Gmail.Users.Messages.send({ raw: raw }, 'me');
+  Logger.log('✅ 4th FU sent via Advanced API to %s', email);
+  return res.id;
 }
 
 /**
@@ -482,6 +397,62 @@ function buildRawMessage_(to, subject, textBody, htmlBody, inReplyTo) {
 
   const msg = headers + body;
   return Utilities.base64EncodeWebSafe(msg);
+}
+
+/**
+ * Parse a comma-separated Message-ID string into an array.
+ *
+ * @param {string} ids Comma separated IDs.
+ * @return {string[]} Array of IDs.
+ */
+function parseMessageIds_(ids) {
+  return (ids || '')
+    .toString()
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
+}
+
+/**
+ * Append a Message-ID to an existing comma-separated list.
+ *
+ * @param {string} ids Existing IDs.
+ * @param {string} id  ID to append.
+ * @return {string} Updated list.
+ */
+function appendMessageId_(ids, id) {
+  const list = parseMessageIds_(ids);
+  list.push(id);
+  return list.join(', ');
+}
+
+/**
+ * Determine whether any stored message ID appears in recent sent mail.
+ *
+ * @param {string} email  Contact email.
+ * @param {string[]} ids  Stored Message IDs.
+ * @param {number} days   Lookback days for search.
+ * @return {boolean} TRUE if safe to send another message.
+ */
+function shouldSendFollowUp_(email, ids, days) {
+  if (!ids.length) return true;
+  const q = `to:${email} newer_than:${days}d in:sent`;
+  const res = Gmail.Users.Messages.list({ q: q }, 'me');
+  const found = (res.messages || []).some(m => ids.includes(m.id));
+  return !found;
+}
+
+/**
+ * Check if the contact replied within the lookback window.
+ *
+ * @param {string} email Contact email.
+ * @param {number} days  Lookback window in days.
+ * @return {boolean} TRUE if a reply exists.
+ */
+function hasRecentReply_(email, days) {
+  const q = `from:${email} newer_than:${days}d -in:sent`;
+  const res = Gmail.Users.Messages.list({ q: q }, 'me');
+  return (res.messages || []).length > 0;
 }
 
 /**
@@ -522,54 +493,19 @@ function isMyAddress_(addr, myAddrs) {
 }
 
 /**
- * Determines the reply status for a thread.
- *
- * @param {GmailThread} thread Gmail thread to examine.
- * @param {string} email       Contact email address.
- * @return {string} Status: "New Response", "Replied", or "Waiting".
- */
-function getLatestThreadStatus_(thread, email, myAddrs) {
-  const messages = thread.getMessages();
-  if (!messages.length) return 'Waiting';
-
-  const contactAddr = email.toLowerCase();
-  const lastAddr = extractEmail_(
-    messages[messages.length - 1].getFrom()
-  ).toLowerCase();
-  const contactEver = messages.some(
-    m => extractEmail_(m.getFrom()).toLowerCase() === contactAddr
-  );
-
-  if (lastAddr === contactAddr) {
-    return 'New Response';
-  }
-
-  if (isMyAddress_(lastAddr, myAddrs) && contactEver) {
-    return 'Replied';
-  }
-
-  return contactEver ? 'Replied' : 'Waiting';
-}
-
-/**
- * Helper to write a status value linked to the Gmail thread.
+ * Helper to write a reply status value to the sheet.
  *
  * @param {Range} cell      The Reply Status cell to update.
  * @param {string} text     Display text such as "New Response".
- * @param {string} threadId Gmail thread ID for the hyperlink.
  * @param {string} color    Background color to apply.
- */
-function setReplyStatusWithLink_(cell, text, threadId, color) {
-  const rich = SpreadsheetApp.newRichTextValue()
-    .setText(text)
-    .setLinkUrl(GMAIL_THREAD_LINK_PREFIX + threadId)
-    .build();
-  cell.setRichTextValue(rich).setBackground(color);
+*/
+function setReplyStatus_(cell, text, color) {
+  cell.setValue(text).setBackground(color || null);
 }
 
 /**
  * Automatically send follow-up emails if contacts haven't replied.
- * Requires a stored Thread ID for each contact and skips any that are missing.
+ * Uses stored Message-IDs to avoid duplicate sends.
  * Intended to run daily via a time-based Apps Script trigger.
  */
 function autoSendFollowUps() {
@@ -578,10 +514,8 @@ function autoSendFollowUps() {
     return;
   }
 
-  if (!isAutoSendEnabled()) return;
-  const myAddrs = getMyAddresses_();
-  const ss   = SpreadsheetApp.getActiveSpreadsheet();
-  const sh   = ss.getSheetByName(TARGET_SHEET_NAME);
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sh = ss.getSheetByName(TARGET_SHEET_NAME);
   if (!sh) return;
   const hdrs = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
 
@@ -591,7 +525,7 @@ function autoSendFollowUps() {
   const statusCol    = hdrs.indexOf('Status') + 1;
   const stageCol     = hdrs.indexOf('Stage') + 1;
   const replyCol     = hdrs.indexOf('Reply Status') + 1;
-  const threadIdCol  = hdrs.indexOf('Thread ID') + 1;
+  const msgIdCol     = hdrs.indexOf(MESSAGE_IDS_COLUMN) + 1;
   if (
     firstNameCol < 1 ||
     lastNameCol < 1 ||
@@ -599,9 +533,9 @@ function autoSendFollowUps() {
     statusCol < 1 ||
     stageCol < 1 ||
     replyCol < 1 ||
-    threadIdCol < 1
+    msgIdCol < 1
   ) {
-    throw new Error('Headers required: First Name, Last Name, Email, Status, Stage, Reply Status, Thread ID');
+    throw new Error('Headers required: First Name, Last Name, Email, Status, Stage, Reply Status, ' + MESSAGE_IDS_COLUMN);
   }
 
   const numRows = sh.getLastRow() - 1;
@@ -616,105 +550,90 @@ function autoSendFollowUps() {
     const last   = (vals[lastNameCol - 1]  || '').toString();
     if (!first && !last) return;
     let status   = vals[statusCol - 1] || '';
-    const storedThreadId = vals[threadIdCol - 1];
+    let msgIds   = vals[msgIdCol - 1] || '';
     const tags   = status.split(',').map(t => t.trim()).filter(Boolean);
     if (!tags.includes('Outreach')) return;
     if (tags.includes('Moved to DM')) return;
 
-    let thread = null;
-    if (storedThreadId) {
-      try {
-        thread = GmailApp.getThreadById(storedThreadId);
-      } catch (err) {
-        Logger.log('Failed to fetch thread %s for %s: %s', storedThreadId, email, err);
-      }
-    }
-    if (!thread) {
-      Logger.log('Thread not found for %s; skipping follow-ups.', email);
-      return;
-    }
+    const idsArr = parseMessageIds_(msgIds);
     const replyCell = sh.getRange(row, replyCol);
-    const threadStatus = getLatestThreadStatus_(thread, email, myAddrs);
-    const statusColor =
-      threadStatus === 'New Response' || threadStatus === 'Replied'
-        ? NEW_RESPONSE_COLOR
-        : null;
-    setReplyStatusWithLink_(replyCell, threadStatus, thread.getId(), statusColor);
 
-    if (threadStatus === 'New Response' || threadStatus === 'Replied') {
-      if (threadStatus === 'Replied' && !tags.includes('Replied')) {
-        tags.push('Replied');
-      }
-      const newStatus = tags.join(', ');
-      if (newStatus !== status) {
-        sh.getRange(row, statusCol).setValue(newStatus);
-      }
+    if (hasRecentReply_(email, FOLLOWUP_LOOKBACK_DAYS)) {
+      setReplyStatus_(replyCell, 'Replied', NEW_RESPONSE_COLOR);
+      if (!tags.includes('Replied')) tags.push('Replied');
+      const outIdx = tags.indexOf('Outreach');
+      if (outIdx > -1) tags.splice(outIdx, 1);
+      sh.getRange(row, statusCol).setValue(tags.join(', '));
       return;
+    } else {
+      setReplyStatus_(replyCell, 'Waiting', null);
     }
 
-    if (thread.getMessageCount() === 0) {
-
-      Logger.log('Thread %s has no messages; skipping follow-ups for %s.', thread.getId(), email);
-      Logger.log('No messages in thread %s; skipping follow-ups for %s.', thread.getId(), email);
-
-      return;
+    let lastDate = 0;
+    if (idsArr.length) {
+      try {
+        const msg = Gmail.Users.Messages.get(idsArr[idsArr.length - 1], 'me');
+        lastDate = Number(msg.internalDate);
+      } catch (err) {
+        Logger.log('Failed to fetch message %s for %s: %s', idsArr[idsArr.length - 1], email, err);
+      }
     }
-    const lastMsg  = thread.getMessages().pop();
-    const minutesSince = (Date.now() - lastMsg.getDate().getTime()) / 60000;
+    const minutesSince = lastDate ? (Date.now() - lastDate) / 60000 : Infinity;
 
+    let sentId;
     if (!tags.includes('1st Follow Up Sent') && minutesSince >= FIRST_FU_DELAY_MINUTES) {
-      sendFirstFollowUpForRow(email, first, thread.getId());
-      tags.push('1st Follow Up Sent');
-      if (stageCol > 0) {
-        sh.getRange(row, stageCol).setValue('Follow Up 1');
+      sentId = sendFirstFollowUpForRow(email, first, msgIds);
+      if (sentId) {
+        msgIds = appendMessageId_(msgIds, sentId);
+        tags.push('1st Follow Up Sent');
+        if (stageCol > 0) sh.getRange(row, stageCol).setValue('Follow Up 1');
       }
     } else if (
       tags.includes('1st Follow Up Sent') &&
       !tags.includes('2nd Follow Up Sent') &&
       minutesSince >= SECOND_FU_DELAY_MINUTES
     ) {
-      sendSecondFollowUpForRow(email, first, thread.getId());
-      tags.push('2nd Follow Up Sent');
-      if (stageCol > 0) {
-        sh.getRange(row, stageCol).setValue('Follow Up 2');
+      sentId = sendSecondFollowUpForRow(email, first, msgIds);
+      if (sentId) {
+        msgIds = appendMessageId_(msgIds, sentId);
+        tags.push('2nd Follow Up Sent');
+        if (stageCol > 0) sh.getRange(row, stageCol).setValue('Follow Up 2');
       }
     } else if (
       tags.includes('2nd Follow Up Sent') &&
       !tags.includes('3rd Follow Up Sent') &&
       minutesSince >= THIRD_FU_DELAY_MINUTES
     ) {
-      sendThirdFollowUpForRow(email, first, thread.getId());
-      tags.push('3rd Follow Up Sent');
-      if (stageCol > 0) {
-        sh.getRange(row, stageCol).setValue('Follow Up 3');
+      sentId = sendThirdFollowUpForRow(email, first, msgIds);
+      if (sentId) {
+        msgIds = appendMessageId_(msgIds, sentId);
+        tags.push('3rd Follow Up Sent');
+        if (stageCol > 0) sh.getRange(row, stageCol).setValue('Follow Up 3');
       }
     } else if (
       tags.includes('3rd Follow Up Sent') &&
       !tags.includes('4th Follow Up Sent') &&
       minutesSince >= FOURTH_FU_DELAY_MINUTES
     ) {
-      sendFourthFollowUpForRow(email, first, thread.getId());
-      tags.push('4th Follow Up Sent');
-      if (stageCol > 0) {
-        sh.getRange(row, stageCol).setValue('Follow Up 4');
+      sentId = sendFourthFollowUpForRow(email, first, msgIds);
+      if (sentId) {
+        msgIds = appendMessageId_(msgIds, sentId);
+        tags.push('4th Follow Up Sent');
+        if (stageCol > 0) sh.getRange(row, stageCol).setValue('Follow Up 4');
       }
     } else if (
       tags.includes('4th Follow Up Sent') &&
       !tags.includes('Moved to DM') &&
       minutesSince >= FOURTH_FU_DELAY_MINUTES
     ) {
-      setReplyStatusWithLink_(
-        replyCell,
-        'Moved to DM',
-        thread.getId(),
-        MOVED_TO_DM_COLOR,
-      );
+      setReplyStatus_(replyCell, 'Moved to DM', MOVED_TO_DM_COLOR);
       tags.push('Moved to DM');
-      if (stageCol > 0) {
-        sh.getRange(row, stageCol).setValue('DM');
-      }
+      const outIdx = tags.indexOf('Outreach');
+      if (outIdx > -1) tags.splice(outIdx, 1);
+      if (stageCol > 0) sh.getRange(row, stageCol).setValue('DM');
     }
 
+    sh.getRange(row, msgIdCol).setValue(msgIds);
     const newStatus = tags.join(', ');
     if (newStatus !== status) {
       sh.getRange(row, statusCol).setValue(newStatus);
