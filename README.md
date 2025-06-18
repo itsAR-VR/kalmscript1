@@ -37,7 +37,7 @@
  ## Basic Usage
  
 
-1. In your spreadsheet create columns titled **First Name**, **Last Name**, **Email**, **Status**, **Stage**, and **Email Link**.
+1. In your spreadsheet create columns titled **First Name**, **Last Name**, **Email**, **Entry Date**, **Status**, **Stage**, and **Email Link**.
  2. Install an **On edit** trigger for the `onEditTrigger` function.
  3. Install a daily time‑driven trigger for `autoSendFollowUps` so unanswered threads continue to receive follow‑ups automatically.
 4. Add a row for each contact and tag the **Status** cell with `Outreach` to begin the sequence.
@@ -47,8 +47,9 @@
  5. Customize the template text and delay constants in `code.gs` as needed.
 6. Each run checks the time since the last message in every thread and sends the next follow‑up when due.
    The **Stage** column records which template was sent and is updated before each email is delivered.
-   The **Email Link** column automatically stores a link to the Gmail thread
-   when the initial outreach email is sent.
+    The **Email Link** column automatically stores a link to the Gmail thread
+    when the initial outreach email is sent.
+    The **Entry Date** column records the date each contact's email was added.
 
  
  With the Gmail service enabled and triggers installed, the script manages your outreach and follow‑ups directly from Gmail while updating status information in your spreadsheet.

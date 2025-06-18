@@ -69,6 +69,18 @@ function onEditTrigger(e) {
   const hdrs = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
   const stageCol  = hdrs.indexOf('Stage') + 1;
 
+  // Record entry date whenever an email is entered.
+  const emailCol     = hdrs.indexOf('Email') + 1;
+  const entryDateCol = hdrs.indexOf('Entry Date') + 1;
+  if (
+    emailCol > 0 &&
+    entryDateCol > 0 &&
+    e.range.getColumn() === emailCol &&
+    e.value
+  ) {
+    sh.getRange(e.range.getRow(), entryDateCol).setValue(new Date());
+  }
+
   // 1) Find Status column
   const statusCol = hdrs.indexOf('Status') + 1;
   if (statusCol < 1 || e.range.getColumn() !== statusCol) return;
