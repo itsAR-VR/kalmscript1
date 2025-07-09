@@ -107,7 +107,6 @@ function onEditTrigger(e) {
   // 4) Find Name & Email columns
   const firstNameCol = hdrs.indexOf('First Name') + 1;
   const lastNameCol  = hdrs.indexOf('Last Name') + 1;
-  const emailCol     = hdrs.indexOf('Email') + 1;
   if (firstNameCol < 1 || lastNameCol < 1 || emailCol < 1) {
     throw new Error('Headers required: First Name, Last Name, Email, Status');
   }
