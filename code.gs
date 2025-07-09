@@ -24,6 +24,10 @@ const SECOND_FU_DELAY_MINUTES = 4  * 24 * 60;  // 4 days
 const THIRD_FU_DELAY_MINUTES  = 7  * 24 * 60;  // 7 days
 const FOURTH_FU_DELAY_MINUTES = 12 * 24 * 60;  // 12 days
 
+// Custom header added to all automated messages so manual replies can be
+// detected later when scanning threads.
+const AUTO_HEADER = 'X-Kalm-Auto';
+
 /**
  * Enable or disable automatic follow-up sending.
  *
@@ -174,7 +178,7 @@ function sendInitialForRow(email, firstName, rowIndex) {
   const htmlBody = tpl.evaluate().getContent();
   const textBody = `Hi ${firstName},\n\nThanks for connecting—here’s the info we discussed.\n\nBest,\nKam Ordonez`;
 
-  const raw = buildRawMessage_(email, subject, textBody, htmlBody);
+  const raw = buildRawMessage_(email, subject, textBody, htmlBody, undefined, true);
   const response = Gmail.Users.Messages.send({ raw: raw }, 'me');
 
   if (rowIndex) {
@@ -291,7 +295,7 @@ function sendFirstFollowUpForRow(email, firstName) {
   const textBody = `Hi ${firstName},\n\nJust checking in—any questions?\n\nBest,\nKam Ordonez`;
 
   // Build raw RFC-2822 reply
-  const raw = buildRawMessage_(email, `Re: ${subject}`, textBody, htmlBody, inReplyTo);
+  const raw = buildRawMessage_(email, `Re: ${subject}`, textBody, htmlBody, inReplyTo, true);
   Gmail.Users.Messages.send({ threadId: info.threadId, raw: raw }, 'me');
   Logger.log('✅ 1st FU sent via Advanced API to %s in thread %s', email, info.threadId);
 }
@@ -322,7 +326,7 @@ function sendSecondFollowUpForRow(email, firstName) {
   const textBody = `Hi ${firstName},\n\nJust checking-in let me know if you need anything else!\n\nBest,\nKam Ordonez`;
 
   // Build and send raw reply
-  const raw = buildRawMessage_(email, `Re: ${subject}`, textBody, htmlBody, inReplyTo);
+  const raw = buildRawMessage_(email, `Re: ${subject}`, textBody, htmlBody, inReplyTo, true);
   Gmail.Users.Messages.send({ threadId: info.threadId, raw: raw }, 'me');
   Logger.log('✅ 2nd FU sent via Advanced API to %s in thread %s', email, info.threadId);
 }
@@ -351,7 +355,7 @@ function sendThirdFollowUpForRow(email, firstName) {
   const htmlBody = tpl.evaluate().getContent();
   const textBody = `Hi ${firstName},\n\nQuick nudge—your complimentary Kalm mouth‑tape pack is still reserved for you. Just reply with your address and I’ll ship it right away!\n\nWarmly,\nKam Ordonez`;
 
-  const raw = buildRawMessage_(email, `Re: ${subject}`, textBody, htmlBody, inReplyTo);
+  const raw = buildRawMessage_(email, `Re: ${subject}`, textBody, htmlBody, inReplyTo, true);
   Gmail.Users.Messages.send({ threadId: info.threadId, raw: raw }, 'me');
   Logger.log('✅ 3rd FU sent via Advanced API to %s in thread %s', email, info.threadId);
 }
@@ -380,7 +384,7 @@ function sendFourthFollowUpForRow(email, firstName) {
   const htmlBody = tpl.evaluate().getContent();
   const textBody = `Hi ${firstName},\n\nThis is my last check‑in for now. If calmer, clearer sleep isn’t on your radar yet, no worries—just reply “later”. Otherwise, send your address anytime and I’ll pop your free sample in the mail.\n\nFind your Kalm,\nKam Ordonez`;
 
-  const raw = buildRawMessage_(email, `Re: ${subject}`, textBody, htmlBody, inReplyTo);
+  const raw = buildRawMessage_(email, `Re: ${subject}`, textBody, htmlBody, inReplyTo, true);
   Gmail.Users.Messages.send({ threadId: info.threadId, raw: raw }, 'me');
   Logger.log('✅ 4th FU sent via Advanced API to %s in thread %s', email, info.threadId);
 }
@@ -389,7 +393,7 @@ function sendFourthFollowUpForRow(email, firstName) {
  * Helper: builds a base64-URL-encoded RFC-2822 multipart/alternative reply
  * with From:, To:, Subject:, In-Reply-To, and References headers.
  */
-function buildRawMessage_(to, subject, textBody, htmlBody, inReplyTo) {
+function buildRawMessage_(to, subject, textBody, htmlBody, inReplyTo, isAuto) {
   const nl       = '\r\n';
   const boundary = '----=_Boundary_' + Date.now();
 
@@ -397,6 +401,10 @@ function buildRawMessage_(to, subject, textBody, htmlBody, inReplyTo) {
     `From: ${FROM_ADDRESS}` + nl +
     `To: ${to}` + nl +
     `Subject: ${subject}` + nl;
+
+  if (isAuto) {
+    headers += `${AUTO_HEADER}: yes` + nl;
+  }
 
   if (inReplyTo) {
     headers +=
@@ -492,16 +500,15 @@ function checkReplyStatus_(email, myAddrs) {
   const contactAddr = email.toLowerCase();
   const lastMsg = messages[messages.length - 1];
   const lastAddr = extractEmail_(getHeaderValue_(lastMsg.payload.headers, 'From')).toLowerCase();
+  const lastAuto = getHeaderValue_(lastMsg.payload.headers, AUTO_HEADER);
   const contactEver = messages.some(m =>
     extractEmail_(getHeaderValue_(m.payload.headers, 'From')).toLowerCase() === contactAddr
   );
   let status;
-  if (lastAddr === contactAddr) {
-    status = 'New Response';
-  } else if (isMyAddress_(lastAddr, myAddrs) && contactEver) {
-    status = 'Replied';
+  if (isMyAddress_(lastAddr, myAddrs)) {
+    status = lastAuto ? (contactEver ? 'Replied' : 'Waiting') : 'Replied';
   } else {
-    status = contactEver ? 'Replied' : 'Waiting';
+    status = 'New Response';
   }
   return { status: status, threadId: threadId, lastMessage: lastMsg };
 }

@@ -27,12 +27,16 @@
   sent so follow-ups start immediately. You can disable auto-sending anytime from
  **Project Settings → Script properties** by setting `AutoSendEnabled` to
  `FALSE`. To flip this value without opening settings, run the
- `toggleAutoSendEnabled` function from **Extensions → Macros** or assign it to a
- sheet button.
- 
- Toggling this value only stops follow-ups logically. The time-driven trigger
+  `toggleAutoSendEnabled` function from **Extensions → Macros** or assign it to a
+  sheet button.
+
+Toggling this value only stops follow-ups logically. The time-driven trigger
  continues to invoke `autoSendFollowUps`, which consumes an execution each day.
  Delete the trigger entirely if you need to pause scheduled runs.
+
+All automated emails include a custom `X-Kalm-Auto` header. If you reply
+manually from the same account, the absence of this header lets the script know
+to stop further follow-ups automatically.
  
  ## Basic Usage
  
